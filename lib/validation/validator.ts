@@ -1,6 +1,7 @@
 import Ajv, { type ErrorObject } from "ajv";
 import addFormats from "ajv-formats";
-import { getCompiledJsonSchema, type FlowJson } from "@/lib/schema/flow.schema";
+
+import { type FlowJson, getCompiledJsonSchema } from "@/lib/schema/flow.schema";
 
 const ajv = new Ajv({ allErrors: true, allowUnionTypes: true, strict: false });
 addFormats(ajv);

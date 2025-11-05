@@ -29,4 +29,3 @@ export function deriveNodeType(
   // Default to llm_task
   return "llm_task";
 }
-

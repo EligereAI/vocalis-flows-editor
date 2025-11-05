@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { saveCurrent, loadCurrent } from "@/lib/storage/localStore";
+import { beforeEach, describe, expect, it } from "vitest";
+
+import { loadCurrent, saveCurrent } from "@/lib/storage/localStore";
 
 describe("storage", () => {
   beforeEach(() => {

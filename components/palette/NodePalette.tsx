@@ -1,9 +1,10 @@
 "use client";
 
-import { NODE_TEMPLATES } from "@/lib/nodes/templates";
-import { Button } from "@/components/ui/button";
-import { deriveNodeType } from "@/lib/utils/nodeType";
 import type { Node } from "reactflow";
+
+import { Button } from "@/components/ui/button";
+import { NODE_TEMPLATES } from "@/lib/nodes/templates";
+import { deriveNodeType } from "@/lib/utils/nodeType";
 
 type Props = {
   nodes: Node[];

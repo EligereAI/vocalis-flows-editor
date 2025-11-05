@@ -1,7 +1,8 @@
 "use client";
 
-import { Handle, Position, useNodes, type NodeProps } from "reactflow";
 import { AlertTriangle, LogOut, Play } from "lucide-react";
+import { Handle, type NodeProps, Position, useNodes } from "reactflow";
+
 import { deriveNodeType } from "@/lib/utils/nodeType";
 
 export default function BaseNode({ data, selected }: NodeProps) {

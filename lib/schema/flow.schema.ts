@@ -1,4 +1,4 @@
-import { Type, type Static } from "@sinclair/typebox";
+import { type Static, Type } from "@sinclair/typebox";
 
 // Node types are just templates - all nodes generate the same NodeConfig structure
 // These provide sensible defaults for common use cases

@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -10,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import type { ContextStrategyConfigJson } from "@/lib/schema/flow.schema";
 
 type Props = {
@@ -91,4 +91,3 @@ export default function ContextStrategyForm({ contextStrategy, onChange }: Props
     </div>
   );
 }
-

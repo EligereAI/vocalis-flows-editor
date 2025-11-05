@@ -1,6 +1,7 @@
-import { describe, it, expect } from "vitest";
-import { validateFlowJson, customGraphChecks } from "@/lib/validation/validator";
+import { describe, expect, it } from "vitest";
+
 import minimal from "@/lib/examples/minimal.json";
+import { customGraphChecks, validateFlowJson } from "@/lib/validation/validator";
 
 describe("validator", () => {
   it("validates minimal example", () => {

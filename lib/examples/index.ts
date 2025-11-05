@@ -1,5 +1,5 @@
-import minimal from "./minimal.json";
 import foodOrdering from "./food_ordering.json";
+import minimal from "./minimal.json";
 
 export const EXAMPLES = [
   { id: "minimal", name: "Minimal", json: minimal },

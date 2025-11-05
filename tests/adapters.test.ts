@@ -1,5 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { reactFlowToFlowJson, flowJsonToReactFlow } from "@/lib/convert/flowAdapters";
+import { describe, expect, it } from "vitest";
+
+import { flowJsonToReactFlow, reactFlowToFlowJson } from "@/lib/convert/flowAdapters";
 
 describe("adapters", () => {
   it("converts React Flow to Flow JSON and back", () => {

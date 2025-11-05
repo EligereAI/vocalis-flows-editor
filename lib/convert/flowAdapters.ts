@@ -1,5 +1,6 @@
 import type { Edge, Node } from "reactflow";
-import type { FlowJson, FlowFunctionJson } from "@/lib/schema/flow.schema";
+
+import type { FlowFunctionJson, FlowJson } from "@/lib/schema/flow.schema";
 import { deriveNodeType } from "@/lib/utils/nodeType";
 
 export function reactFlowToFlowJson(nodes: Node[], edges: Edge[]): FlowJson {

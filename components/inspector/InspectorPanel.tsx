@@ -1,18 +1,20 @@
 "use client";
 
-import { useCallback, useState, useEffect, useRef } from "react";
-import MessagesForm from "./forms/MessagesForm";
-import FunctionsForm from "./forms/FunctionsForm";
-import ActionsForm from "./forms/ActionsForm";
-import ContextStrategyForm from "./forms/ContextStrategyForm";
+import { useCallback, useEffect, useRef, useState } from "react";
+
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import { showToast } from "@/components/ui/Toast";
+import { useEditorStore } from "@/lib/store/editorStore";
 import { generateNodeIdFromLabel } from "@/lib/utils/nodeId";
 import { deriveNodeType } from "@/lib/utils/nodeType";
-import { useEditorStore } from "@/lib/store/editorStore";
+
+import ActionsForm from "./forms/ActionsForm";
+import ContextStrategyForm from "./forms/ContextStrategyForm";
+import FunctionsForm from "./forms/FunctionsForm";
+import MessagesForm from "./forms/MessagesForm";
 
 type Props = {
   nodes: any[];

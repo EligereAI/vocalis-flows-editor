@@ -6,6 +6,7 @@ import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 import prettier from "eslint-plugin-prettier";
 import prettierConfig from "eslint-config-prettier";
+import simpleImportSort from "eslint-plugin-simple-import-sort";
 import globals from "globals";
 
 export default [
@@ -44,6 +45,7 @@ export default [
       "react-refresh": reactRefresh,
       "@typescript-eslint": typescript,
       prettier,
+      "simple-import-sort": simpleImportSort,
     },
     rules: {
       ...react.configs.recommended.rules,
@@ -75,6 +77,8 @@ export default [
       "prettier/prettier": "warn",
       "no-dupe-keys": "warn", // Allow duplicate keys (they may be intentional overrides)
       "no-empty": ["warn", { allowEmptyCatch: true }], // Allow empty catch blocks
+      "simple-import-sort/imports": "warn",
+      "simple-import-sort/exports": "warn",
       ...prettierConfig.rules,
     },
     settings: {
