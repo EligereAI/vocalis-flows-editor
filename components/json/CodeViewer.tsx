@@ -2,6 +2,7 @@
 
 import Editor from "@monaco-editor/react";
 import { useMemo, useState } from "react";
+import { Edge, Node } from "reactflow";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { generatePythonCode } from "@/lib/codegen/pythonGenerator";
@@ -9,8 +10,8 @@ import { reactFlowToFlowJson } from "@/lib/convert/flowAdapters";
 import { validateFlowJson } from "@/lib/validation/validator";
 
 type Props = {
-  nodes: any[];
-  edges: any[];
+  nodes: Node[];
+  edges: Edge[];
 };
 
 export default function CodeViewer({ nodes, edges }: Props) {
@@ -19,7 +20,7 @@ export default function CodeViewer({ nodes, edges }: Props) {
   // Generate JSON from current graph state
   const jsonCode = useMemo(() => {
     try {
-      const json = reactFlowToFlowJson(nodes as any, edges as any);
+      const json = reactFlowToFlowJson(nodes, edges);
       return JSON.stringify(json, null, 2);
     } catch {
       return "# Error generating JSON";
@@ -29,7 +30,7 @@ export default function CodeViewer({ nodes, edges }: Props) {
   // Generate Python code from current graph state
   const pythonCode = useMemo(() => {
     try {
-      const json = reactFlowToFlowJson(nodes as any, edges as any);
+      const json = reactFlowToFlowJson(nodes, edges);
       const validation = validateFlowJson(json);
       if (validation.valid) {
         return generatePythonCode(json);

@@ -4,7 +4,15 @@ import "reactflow/dist/style.css";
 
 import { extractDecisionNodeFromChange, useDecisionNodes } from "hooks/useDecisionNodes";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { Background, Controls, ReactFlow, useEdgesState, useNodesState } from "reactflow";
+import {
+  Background,
+  Controls,
+  Edge,
+  Node,
+  ReactFlow,
+  useEdgesState,
+  useNodesState,
+} from "reactflow";
 
 import Toolbar from "@/components/header/Toolbar";
 import InspectorPanel from "@/components/inspector/InspectorPanel";
@@ -172,10 +180,10 @@ export default function EditorShell() {
 
   // load current on mount if present
   useEffect(() => {
-    const saved = loadCurrent<{ nodes: any[]; edges: any[] }>();
+    const saved = loadCurrent<{ nodes: Node[]; edges: Edge[] }>();
     if (saved?.nodes && saved?.edges) {
-      setNodes(saved.nodes as any);
-      setEdges(saved.edges as any);
+      setNodes(saved.nodes);
+      setEdges(saved.edges);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -255,37 +263,37 @@ export default function EditorShell() {
             showNodesPanel ? "translate-x-0" : "-translate-x-full"
           }`}
         >
-          <NodePalette nodes={nodes as any} />
+          <NodePalette nodes={nodes} />
         </div>
       </div>
       <Toolbar
-        nodes={nodes as any}
-        edges={edges as any}
-        setNodes={setNodes as any}
-        setEdges={setEdges as any}
+        nodes={nodes}
+        edges={edges}
+        setNodes={setNodes}
+        setEdges={setEdges}
         canUndo={undoManagerRef.current.canUndo()}
         canRedo={undoManagerRef.current.canRedo()}
         onUndo={() => {
           const state = undoManagerRef.current.undo();
           if (state) {
             skipUndoPushRef.current = true;
-            setNodes(state.nodes as any);
-            setEdges(state.edges as any);
+            setNodes(state.nodes);
+            setEdges(state.edges);
           }
         }}
         onRedo={() => {
           const state = undoManagerRef.current.redo();
           if (state) {
             skipUndoPushRef.current = true;
-            setNodes(state.nodes as any);
-            setEdges(state.edges as any);
+            setNodes(state.nodes);
+            setEdges(state.edges);
           }
         }}
         onNewFlow={() => {
           // Reset to initial graph
           skipUndoPushRef.current = true;
-          setNodes(initial.nodes as any);
-          setEdges(initial.edges as any);
+          setNodes(initial.nodes);
+          setEdges(initial.edges);
           undoManagerRef.current = new UndoManager({
             nodes: initial.nodes,
             edges: initial.edges,
@@ -322,8 +330,8 @@ export default function EditorShell() {
                 // Update React Flow visual selection
                 setTimeout(() => {
                   if (rfInstance) {
-                    rfInstance.setNodes((nds: any[]) =>
-                      nds.map((node: any) => ({
+                    rfInstance.setNodes((nds: Node[]) =>
+                      nds.map((node) => ({
                         ...node,
                         selected: node.id === nodeId,
                       }))
@@ -338,8 +346,8 @@ export default function EditorShell() {
                 selectNode(nodeId, functionIndex);
                 setTimeout(() => {
                   if (rfInstance) {
-                    rfInstance.setNodes((nds: any[]) =>
-                      nds.map((node: any) => ({
+                    rfInstance.setNodes((nds: Node[]) =>
+                      nds.map((node) => ({
                         ...node,
                         selected: node.id === nodeId,
                       }))
@@ -386,9 +394,7 @@ export default function EditorShell() {
             const id = generateNodeIdFromLabel(label, existingIds);
             const nodeData = { label, ...(tmpl?.data ?? {}) };
             const derivedType = deriveNodeType(nodeData, type);
-            setNodes((nds) =>
-              nds.concat({ id, type: derivedType, position, data: nodeData } as any)
-            );
+            setNodes((nds) => nds.concat({ id, type: derivedType, position, data: nodeData }));
           }}
           onInit={(instance) => setRfInstance(instance)}
           fitView
@@ -409,7 +415,7 @@ export default function EditorShell() {
         {selectedNodeId && (
           <div className="shrink-0 h-full" style={{ width: `${inspectorPanelWidth}px` }}>
             <InspectorPanel
-              nodes={nodes as any}
+              nodes={nodes}
               availableNodeIds={nodes.map((n) => n.id)}
               onChange={(next) => {
                 if (!selectedNodeId || selectedNodeId !== next.id) return;
@@ -477,7 +483,7 @@ export default function EditorShell() {
           </div>
         )}
       </div>
-      <CodePanel nodes={nodes as any} edges={edges as any} />
+      <CodePanel nodes={nodes} edges={edges} />
       <ToastContainer />
     </div>
   );

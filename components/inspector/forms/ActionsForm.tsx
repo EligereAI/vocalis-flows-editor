@@ -77,12 +77,7 @@ export default function ActionsForm({ label, actions, onChange }: Props) {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8"
-                  onClick={() => removeItem(i)}
-                >
+                <Button variant="ghost" size="sm" className="h-8 w-8" onClick={() => removeItem(i)}>
                   <X className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
@@ -92,9 +87,7 @@ export default function ActionsForm({ label, actions, onChange }: Props) {
         </div>
       ))}
       {items.length === 0 && (
-        <div className="text-xs opacity-40 italic py-2">
-          No actions. Click "Add" to create one.
-        </div>
+        <div className="text-xs opacity-40 italic py-2">No actions. Click "Add" to create one.</div>
       )}
     </div>
   );

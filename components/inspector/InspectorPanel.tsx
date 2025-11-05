@@ -216,7 +216,10 @@ export default function InspectorPanel({
         </TabsList>
 
         {/* General Tab */}
-        <TabsContent value="general" className="flex-1 overflow-y-auto min-h-0 space-y-4 pr-1 mt-0 pb-4">
+        <TabsContent
+          value="general"
+          className="flex-1 overflow-y-auto min-h-0 space-y-4 pr-1 mt-0 pb-4"
+        >
           <div className="rounded-lg border bg-neutral-50/50 dark:bg-neutral-900/30 p-3 space-y-3">
             <div>
               <label htmlFor="node-label" className="block mb-1 text-xs font-medium opacity-80">
@@ -317,7 +320,10 @@ export default function InspectorPanel({
         </TabsContent>
 
         {/* Actions Tab */}
-        <TabsContent value="actions" className="flex-1 overflow-y-auto min-h-0 space-y-4 pr-1 mt-0 pb-4">
+        <TabsContent
+          value="actions"
+          className="flex-1 overflow-y-auto min-h-0 space-y-4 pr-1 mt-0 pb-4"
+        >
           <div className="rounded-lg border bg-neutral-50/50 dark:bg-neutral-900/30 p-3">
             <ActionsForm
               label="Pre Actions"
