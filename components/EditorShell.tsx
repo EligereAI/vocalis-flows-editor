@@ -4,7 +4,7 @@ import "reactflow/dist/style.css";
 
 import { extractDecisionNodeFromChange, useDecisionNodes } from "hooks/useDecisionNodes";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { Background, Controls, MiniMap, ReactFlow, useEdgesState, useNodesState } from "reactflow";
+import { Background, Controls, ReactFlow, useEdgesState, useNodesState } from "reactflow";
 
 import Toolbar from "@/components/header/Toolbar";
 import InspectorPanel from "@/components/inspector/InspectorPanel";
@@ -393,7 +393,6 @@ export default function EditorShell() {
           onInit={(instance) => setRfInstance(instance)}
           fitView
         >
-          <MiniMap />
           <Controls />
           <Background />
         </ReactFlow>
