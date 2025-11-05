@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ChevronRight, Plus, X } from "lucide-react";
+import { ChevronDown, ChevronRight, HelpCircle, Plus, X } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -82,6 +82,7 @@ type FunctionProperty = {
   enum?: string[];
   minimum?: number;
   maximum?: number;
+  pattern?: string;
 };
 
 type Props = {
@@ -459,12 +460,12 @@ const FunctionItem = React.forwardRef<HTMLDivElement, FunctionItemProps>(
         } ${isSelected ? "ring-2 ring-blue-500 dark:ring-blue-400" : ""}`}
       >
         {/* Collapsible Header */}
-        <button
-          type="button"
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="w-full flex items-center justify-between gap-2 p-3 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
-        >
-          <div className="flex items-center gap-2 flex-1 min-w-0">
+        <div className="flex items-center gap-2 p-3">
+          <button
+            type="button"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="flex items-center gap-2 flex-1 min-w-0 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors -ml-1 -mr-1 px-1 py-1 rounded"
+          >
             {isExpanded ? (
               <ChevronDown className="h-4 w-4 opacity-60 shrink-0" />
             ) : (
@@ -473,7 +474,7 @@ const FunctionItem = React.forwardRef<HTMLDivElement, FunctionItemProps>(
             <span className="text-xs font-medium truncate">
               {functionName || func.name || `Function ${functionIndex + 1}`}
             </span>
-          </div>
+          </button>
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -492,7 +493,7 @@ const FunctionItem = React.forwardRef<HTMLDivElement, FunctionItemProps>(
               <TooltipContent>Remove function</TooltipContent>
             </Tooltip>
           </TooltipProvider>
-        </button>
+        </div>
 
         {/* Collapsible Content */}
         <div
@@ -502,33 +503,35 @@ const FunctionItem = React.forwardRef<HTMLDivElement, FunctionItemProps>(
         >
           <div className="p-4 space-y-4">
             {/* Basic Info Section */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="flex-1">
-                  <Input
-                    ref={nameInputRef}
-                    className={`h-8 text-xs flex-1 ${nameError ? "border-red-500" : ""}`}
-                    value={functionName}
-                    onChange={(e) => handleNameChange(e.target.value)}
-                    onFocus={handleFocus}
-                    onBlur={handleNameBlur}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.currentTarget.blur();
-                      }
-                    }}
-                    placeholder="Function name (e.g., choose_pizza)"
-                  />
-                  {nameError && <div className="mt-1 text-xs text-red-600">{nameError}</div>}
-                </div>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <div className="text-xs opacity-60">Function name</div>
+                <Input
+                  ref={nameInputRef}
+                  className={`h-8 text-xs ${nameError ? "border-red-500" : ""}`}
+                  value={functionName}
+                  onChange={(e) => handleNameChange(e.target.value)}
+                  onFocus={handleFocus}
+                  onBlur={handleNameBlur}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.currentTarget.blur();
+                    }
+                  }}
+                  placeholder="e.g., choose_pizza"
+                />
+                {nameError && <div className="mt-1 text-xs text-red-600">{nameError}</div>}
               </div>
-              <Textarea
-                className="min-h-20 text-xs"
-                value={func.description}
-                onChange={(e) => onChange({ description: e.target.value })}
-                onFocus={handleFocus}
-                placeholder="Function description"
-              />
+              <div className="space-y-2">
+                <div className="text-xs opacity-60">Description</div>
+                <Textarea
+                  className="min-h-20 text-xs"
+                  value={func.description}
+                  onChange={(e) => onChange({ description: e.target.value })}
+                  onFocus={handleFocus}
+                  placeholder="Describe what this function does"
+                />
+              </div>
             </div>
 
             {/* Properties Section */}
@@ -760,84 +763,92 @@ const FunctionItem = React.forwardRef<HTMLDivElement, FunctionItemProps>(
                               className="rounded-md border border-neutral-200 dark:border-neutral-700 p-3 space-y-3 bg-neutral-50/50 dark:bg-neutral-800/30"
                             >
                               <div className="flex items-center gap-2">
-                                <Select
-                                  value={condition.operator}
-                                  onValueChange={(v) => {
-                                    const newConditions = [...func.decision!.conditions];
-                                    newConditions[condIndex] = {
-                                      ...condition,
-                                      operator: v as DecisionConditionJson["operator"],
-                                    };
-                                    onChange({
-                                      decision: {
-                                        ...func.decision!,
-                                        conditions: newConditions,
-                                      },
-                                    });
-                                  }}
-                                  onOpenChange={(open) => {
-                                    if (open) handleFocus();
-                                  }}
-                                >
-                                  <SelectTrigger className="h-8 text-xs w-28" onFocus={handleFocus}>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="<">&lt;</SelectItem>
-                                    <SelectItem value="<=">&lt;=</SelectItem>
-                                    <SelectItem value="==">==</SelectItem>
-                                    <SelectItem value=">=">&gt;=</SelectItem>
-                                    <SelectItem value=">">&gt;</SelectItem>
-                                    <SelectItem value="!=">!=</SelectItem>
-                                    <SelectItem value="not">not</SelectItem>
-                                    <SelectItem value="in">in</SelectItem>
-                                    <SelectItem value="not in">not in</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <Input
-                                  className="h-8 text-xs flex-1"
-                                  value={condition.value}
-                                  onChange={(e) => {
-                                    const newConditions = [...func.decision!.conditions];
-                                    newConditions[condIndex] = {
-                                      ...condition,
-                                      value: e.target.value,
-                                    };
-                                    onChange({
-                                      decision: {
-                                        ...func.decision!,
-                                        conditions: newConditions,
-                                      },
-                                    });
-                                  }}
-                                  onFocus={handleFocus}
-                                  placeholder="Value"
-                                />
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 w-8"
-                                        onClick={() => {
-                                          const newConditions = func.decision!.conditions.filter(
-                                            (_, i) => i !== condIndex
-                                          );
-                                          onChange({
-                                            decision: {
-                                              ...func.decision!,
-                                              conditions: newConditions,
-                                            },
-                                          });
-                                        }}
-                                      >
-                                        <X className="h-4 w-4" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>Remove condition</TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
+                                <div className="space-y-2 flex-1">
+                                  <div className="text-xs opacity-60">Operator</div>
+                                  <Select
+                                    value={condition.operator}
+                                    onValueChange={(v) => {
+                                      const newConditions = [...func.decision!.conditions];
+                                      newConditions[condIndex] = {
+                                        ...condition,
+                                        operator: v as DecisionConditionJson["operator"],
+                                      };
+                                      onChange({
+                                        decision: {
+                                          ...func.decision!,
+                                          conditions: newConditions,
+                                        },
+                                      });
+                                    }}
+                                    onOpenChange={(open) => {
+                                      if (open) handleFocus();
+                                    }}
+                                  >
+                                    <SelectTrigger className="h-8 text-xs" onFocus={handleFocus}>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="<">&lt;</SelectItem>
+                                      <SelectItem value="<=">&lt;=</SelectItem>
+                                      <SelectItem value="==">==</SelectItem>
+                                      <SelectItem value=">=">&gt;=</SelectItem>
+                                      <SelectItem value=">">&gt;</SelectItem>
+                                      <SelectItem value="!=">!=</SelectItem>
+                                      <SelectItem value="not">not</SelectItem>
+                                      <SelectItem value="in">in</SelectItem>
+                                      <SelectItem value="not in">not in</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="space-y-2 flex-1">
+                                  <div className="text-xs opacity-60">Value</div>
+                                  <Input
+                                    className="h-8 text-xs"
+                                    value={condition.value}
+                                    onChange={(e) => {
+                                      const newConditions = [...func.decision!.conditions];
+                                      newConditions[condIndex] = {
+                                        ...condition,
+                                        value: e.target.value,
+                                      };
+                                      onChange({
+                                        decision: {
+                                          ...func.decision!,
+                                          conditions: newConditions,
+                                        },
+                                      });
+                                    }}
+                                    onFocus={handleFocus}
+                                    placeholder="Value to compare"
+                                  />
+                                </div>
+                                <div className="flex items-end">
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-8 w-8"
+                                          onClick={() => {
+                                            const newConditions = func.decision!.conditions.filter(
+                                              (_, i) => i !== condIndex
+                                            );
+                                            onChange({
+                                              decision: {
+                                                ...func.decision!,
+                                                conditions: newConditions,
+                                              },
+                                            });
+                                          }}
+                                        >
+                                          <X className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Remove condition</TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                </div>
                               </div>
                               <div className="space-y-2">
                                 <div className="text-xs opacity-60">Next Node</div>
@@ -932,9 +943,36 @@ function PropertyItem({
   const [name, setName] = useState(propName);
   const [nameError, setNameError] = useState<string | null>(null);
   const [enumValues, setEnumValues] = useState(() => (property.enum || []).join("\n"));
-  const [showEnum, setShowEnum] = useState(
-    property.type === "string" && (property.enum?.length ?? 0) > 0
-  );
+  const [patternValue, setPatternValue] = useState(() => property.pattern ?? "");
+
+  // Derive current validation type from property values
+  // Check for enum array existence (even if empty) or pattern string existence (even if empty)
+  const derivedValidationType = useMemo<"enum" | "pattern" | "none">(() => {
+    if (property.type !== "string") return "none";
+    // Check if enum property exists (array, even if empty) - this indicates enum mode
+    if (property.enum !== undefined) return "enum";
+    // Check if pattern property exists (string, even if empty) - this indicates pattern mode
+    if (property.pattern !== undefined) return "pattern";
+    return "none";
+  }, [property.type, property.enum, property.pattern]);
+
+  // Use derivedValidationType directly - it's now based on property existence, not just values
+  const validationType = derivedValidationType;
+
+  // Derive enumValues and patternValue from property when validation type changes
+  const currentEnumValues = useMemo(() => {
+    if (validationType === "enum" && property.enum !== undefined) {
+      return property.enum.join("\n");
+    }
+    return enumValues;
+  }, [validationType, property.enum, enumValues]);
+
+  const currentPatternValue = useMemo(() => {
+    if (validationType === "pattern" && property.pattern !== undefined) {
+      return property.pattern;
+    }
+    return patternValue;
+  }, [validationType, property.pattern, patternValue]);
 
   const handleNameChange = (newName: string) => {
     // Allow raw input while typing (including spaces) - only format on blur
@@ -968,50 +1006,65 @@ function PropertyItem({
       .split("\n")
       .map((v) => v.trim())
       .filter((v) => v.length > 0);
-    onUpdate({ enum: enumArray.length > 0 ? enumArray : undefined });
+    // Keep empty array if in enum mode, otherwise undefined (switches to none)
+    const enumValue = validationType === "enum" ? enumArray : undefined;
+    onUpdate({ enum: enumValue, pattern: undefined });
   };
 
-  const toggleEnum = () => {
-    const newShowEnum = !showEnum;
-    setShowEnum(newShowEnum);
-    if (!newShowEnum) {
+  const handlePatternChange = (value: string) => {
+    setPatternValue(value);
+    const trimmed = value.trim();
+    // Keep empty string if in pattern mode to maintain selection, otherwise undefined (switches to none)
+    const patternValue = validationType === "pattern" ? trimmed : trimmed || undefined;
+    onUpdate({ pattern: patternValue, enum: undefined });
+  };
+
+  const handleValidationTypeChange = (value: "enum" | "pattern" | "none") => {
+    if (value === "enum") {
+      // Clear pattern when switching to enum
+      setPatternValue("");
+      onUpdate({ pattern: undefined, enum: property.enum ?? [] });
+      // Initialize enum state if needed
+      if (!property.enum || property.enum.length === 0) {
+        setEnumValues("");
+      }
+    } else if (value === "pattern") {
+      // Clear enum when switching to pattern
       setEnumValues("");
-      onUpdate({ enum: undefined });
+      onUpdate({ enum: undefined, pattern: property.pattern ?? "" });
+      // Initialize pattern state if needed
+      if (!property.pattern) {
+        setPatternValue("");
+      }
+    } else {
+      // Clear both when switching to none
+      setEnumValues("");
+      setPatternValue("");
+      onUpdate({ enum: undefined, pattern: undefined });
     }
   };
 
   return (
     <div className="rounded-md border border-neutral-200 dark:border-neutral-700 p-3 space-y-3 bg-white dark:bg-neutral-900">
-      <div className="flex items-center gap-2">
-        <div className="flex-1">
-          <Input
-            className={`h-8 text-xs flex-1 ${nameError ? "border-red-500" : ""}`}
-            value={name}
-            onChange={(e) => handleNameChange(e.target.value)}
-            onFocus={onFocus}
-            onBlur={handleNameBlur}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.currentTarget.blur();
-              }
-            }}
-            placeholder="Property name (e.g., pizza_size)"
-          />
-          {nameError && <div className="mt-1 text-xs text-red-600">{nameError}</div>}
-        </div>
-        <div className="flex items-center gap-1">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Checkbox
-                  checked={isRequired}
-                  onCheckedChange={(checked: boolean) => onRequiredChange(checked)}
-                  title="Required"
-                />
-              </TooltipTrigger>
-              <TooltipContent>Required</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+      <div className="space-y-2">
+        <div className="text-xs opacity-60">Property name</div>
+        <div className="flex items-start gap-2">
+          <div className="flex-1">
+            <Input
+              className={`h-8 text-xs flex-1 ${nameError ? "border-red-500" : ""}`}
+              value={name}
+              onChange={(e) => handleNameChange(e.target.value)}
+              onFocus={onFocus}
+              onBlur={handleNameBlur}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.currentTarget.blur();
+                }
+              }}
+              placeholder="e.g., pizza_size"
+            />
+            {nameError && <div className="mt-1 text-xs text-red-600">{nameError}</div>}
+          </div>
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -1024,7 +1077,20 @@ function PropertyItem({
           </TooltipProvider>
         </div>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Checkbox
+            checked={isRequired}
+            onCheckedChange={(checked: boolean) => onRequiredChange(checked)}
+            id={`required-${propName}`}
+          />
+          <label htmlFor={`required-${propName}`} className="text-xs opacity-60 cursor-pointer">
+            Required
+          </label>
+        </div>
+      </div>
+      <div className="space-y-2">
+        <div className="text-xs opacity-60">Type</div>
         <Select
           value={property.type}
           onValueChange={(v) => onUpdate({ type: v as FunctionProperty["type"] })}
@@ -1034,7 +1100,7 @@ function PropertyItem({
             }
           }}
         >
-          <SelectTrigger className="h-8 text-xs flex-1" onFocus={onFocus}>
+          <SelectTrigger className="h-8 text-xs" onFocus={onFocus}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -1044,58 +1110,111 @@ function PropertyItem({
             <SelectItem value="boolean">Boolean</SelectItem>
           </SelectContent>
         </Select>
-        {property.type === "string" && (
-          <Button
-            variant={showEnum ? "secondary" : "ghost"}
-            size="sm"
-            className="h-8 text-xs px-3"
-            onClick={toggleEnum}
-            title="Toggle enum"
-          >
-            Enum
-          </Button>
-        )}
       </div>
+      {property.type === "string" && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-1.5">
+            <div className="text-xs opacity-60">Validation</div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="h-3.5 w-3.5 opacity-40 hover:opacity-60 cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <div className="space-y-1.5 text-xs">
+                    <div>
+                      <strong>None:</strong> No validation constraints. Any string value is
+                      accepted.
+                    </div>
+                    <div>
+                      <strong>Enum:</strong> Restrict input to a fixed list of allowed values.
+                    </div>
+                    <div>
+                      <strong>Pattern:</strong> Validate input using a regular expression pattern.
+                    </div>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+          <Select
+            value={validationType}
+            onValueChange={(v) => handleValidationTypeChange(v as "enum" | "pattern" | "none")}
+            onOpenChange={(open) => {
+              if (open && onFocus) {
+                onFocus();
+              }
+            }}
+          >
+            <SelectTrigger className="h-8 text-xs" onFocus={onFocus}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">None</SelectItem>
+              <SelectItem value="enum">Enum</SelectItem>
+              <SelectItem value="pattern">Pattern</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
       {property.type === "integer" || property.type === "number" ? (
-        <div className="flex items-center gap-2">
-          <Input
-            type="number"
-            className="h-8 text-xs"
-            value={property.minimum ?? ""}
-            onChange={(e) =>
-              onUpdate({ minimum: e.target.value ? Number(e.target.value) : undefined })
-            }
-            onFocus={onFocus}
-            placeholder="Min"
-          />
-          <Input
-            type="number"
-            className="h-8 text-xs"
-            value={property.maximum ?? ""}
-            onChange={(e) =>
-              onUpdate({ maximum: e.target.value ? Number(e.target.value) : undefined })
-            }
-            onFocus={onFocus}
-            placeholder="Max"
-          />
+        <div className="space-y-2">
+          <div className="text-xs opacity-60">Range</div>
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              className="h-8 text-xs"
+              value={property.minimum ?? ""}
+              onChange={(e) =>
+                onUpdate({ minimum: e.target.value ? Number(e.target.value) : undefined })
+              }
+              onFocus={onFocus}
+              placeholder="Min"
+            />
+            <Input
+              type="number"
+              className="h-8 text-xs"
+              value={property.maximum ?? ""}
+              onChange={(e) =>
+                onUpdate({ maximum: e.target.value ? Number(e.target.value) : undefined })
+              }
+              onFocus={onFocus}
+              placeholder="Max"
+            />
+          </div>
         </div>
       ) : null}
-      <Textarea
-        className="min-h-16 text-xs"
-        value={property.description ?? ""}
-        onChange={(e) => onUpdate({ description: e.target.value || undefined })}
-        onFocus={onFocus}
-        placeholder="Property description"
-      />
-      {showEnum && property.type === "string" && (
+      <div className="space-y-2">
+        <div className="text-xs opacity-60">Description</div>
+        <Textarea
+          className="min-h-16 text-xs"
+          value={property.description ?? ""}
+          onChange={(e) => onUpdate({ description: e.target.value || undefined })}
+          onFocus={onFocus}
+          placeholder="Describe what this property represents"
+        />
+      </div>
+      {validationType === "enum" && property.type === "string" && (
         <div className="space-y-2">
           <div className="text-xs opacity-60">Enum values (one per line)</div>
           <Textarea
             className="min-h-20 text-xs font-mono"
-            value={enumValues}
+            value={currentEnumValues}
             onChange={(e) => handleEnumChange(e.target.value)}
             onFocus={onFocus}
             placeholder={propertyItemPlaceholder}
+          />
+        </div>
+      )}
+      {validationType === "pattern" && property.type === "string" && (
+        <div className="space-y-2">
+          <div className="text-xs opacity-60">Regex pattern</div>
+          <Input
+            className="h-8 text-xs font-mono"
+            value={currentPatternValue}
+            onChange={(e) => handlePatternChange(e.target.value)}
+            onFocus={onFocus}
+            placeholder="Regex pattern (e.g., ^[0-9]+$)"
           />
         </div>
       )}

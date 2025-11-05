@@ -23,6 +23,7 @@ export const FunctionProperty = Type.Object({
   enum: Type.Optional(Type.Array(Type.Union([Type.String(), Type.Number()]))),
   minimum: Type.Optional(Type.Number()),
   maximum: Type.Optional(Type.Number()),
+  pattern: Type.Optional(Type.String()), // Regex pattern for string validation
 });
 
 // Decision condition structure

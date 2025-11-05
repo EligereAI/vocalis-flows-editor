@@ -64,6 +64,7 @@ function formatProperty(prop: any, indent: string = "            "): string {
   if (prop.enum) parts.push(`"enum": ${JSON.stringify(prop.enum)}`);
   if (prop.minimum !== undefined) parts.push(`"minimum": ${prop.minimum}`);
   if (prop.maximum !== undefined) parts.push(`"maximum": ${prop.maximum}`);
+  if (prop.pattern) parts.push(`"pattern": "${escapePythonString(prop.pattern)}"`);
   return `{\n${indent}    ${parts.join(`,\n${indent}    `)}\n${indent}}`;
 }
 
