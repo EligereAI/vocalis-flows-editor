@@ -1,7 +1,8 @@
 "use client";
 
+import { RotateCcw } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -9,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Textarea } from "@/components/ui/textarea";
 import type { ContextStrategyConfigJson } from "@/lib/schema/flow.schema";
 
@@ -47,19 +49,26 @@ export default function ContextStrategyForm({ contextStrategy, onChange }: Props
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <div className="text-[11px] opacity-60">Context Strategy</div>
+        <div className="text-xs opacity-60">Context Strategy</div>
         {contextStrategy && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-5 text-xs px-2"
-            onClick={() => onChange(undefined)}
-            title="Reset to default (APPEND)"
-          >
-            Reset
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 gap-1"
+                  onClick={() => onChange(undefined)}
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Reset
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Reset to default (APPEND)</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         )}
       </div>
       <Select value={strategy} onValueChange={handleStrategyChange}>
@@ -73,10 +82,10 @@ export default function ContextStrategyForm({ contextStrategy, onChange }: Props
         </SelectContent>
       </Select>
       {strategy === "RESET_WITH_SUMMARY" && (
-        <div>
-          <div className="mb-1 text-[11px] opacity-60">Summary Prompt</div>
+        <div className="space-y-2">
+          <div className="text-xs opacity-60">Summary Prompt</div>
           <Textarea
-            className="h-20 text-xs"
+            className="min-h-20 text-xs"
             value={summaryPrompt}
             onChange={(e) => handleSummaryPromptChange(e.target.value)}
             placeholder="Provide a concise summary of the customer's order details and preferences."
@@ -84,7 +93,7 @@ export default function ContextStrategyForm({ contextStrategy, onChange }: Props
         </div>
       )}
       {strategy === "APPEND" && (
-        <div className="text-[11px] opacity-40 italic">
+        <div className="text-xs opacity-40 italic py-1">
           APPEND is the default strategy. Remove this configuration to use the default.
         </div>
       )}

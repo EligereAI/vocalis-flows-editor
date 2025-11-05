@@ -1,5 +1,7 @@
 "use client";
 
+import { Plus, X } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -8,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Textarea } from "@/components/ui/textarea";
 import type { MessageJson } from "@/lib/schema/flow.schema";
 
@@ -35,21 +38,22 @@ export default function MessagesForm({ label, messages, onChange }: Props) {
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <div className="text-[11px] opacity-60">{label}</div>
-        <Button variant="ghost" size="sm" className="h-5 text-xs px-2" onClick={addItem}>
-          + Add
+        <div className="text-xs opacity-60">{label}</div>
+        <Button variant="ghost" size="sm" className="h-6 gap-1" onClick={addItem}>
+          <Plus className="h-4 w-4" />
+          Add
         </Button>
       </div>
       {items.map((msg, i) => (
-        <div key={i} className="space-y-1 rounded border p-2">
-          <div className="flex items-center justify-between">
+        <div key={i} className="space-y-2 rounded border p-3">
+          <div className="flex items-center gap-2">
             <Select
               value={msg.role}
               onValueChange={(v: "system" | "user" | "assistant") => updateItem(i, { role: v })}
             >
-              <SelectTrigger className="h-6 text-xs w-24">
+              <SelectTrigger className="h-8 text-xs w-32">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -58,17 +62,24 @@ export default function MessagesForm({ label, messages, onChange }: Props) {
                 <SelectItem value="assistant">Assistant</SelectItem>
               </SelectContent>
             </Select>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 text-xs px-2"
-              onClick={() => removeItem(i)}
-            >
-              ×
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8"
+                    onClick={() => removeItem(i)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Remove message</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
           <Textarea
-            className="h-32 min-h-16 max-h-64 text-xs"
+            className="min-h-20 text-xs"
             value={msg.content}
             onChange={(e) => updateItem(i, { content: e.target.value })}
             placeholder="Message content"
@@ -76,8 +87,8 @@ export default function MessagesForm({ label, messages, onChange }: Props) {
         </div>
       ))}
       {items.length === 0 && (
-        <div className="text-[11px] opacity-40 italic">
-          No messages. Click "+ Add" to create one.
+        <div className="text-xs opacity-40 italic py-2">
+          No messages. Click "Add" to create one.
         </div>
       )}
     </div>
