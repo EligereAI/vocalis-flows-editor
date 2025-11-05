@@ -105,6 +105,7 @@ export default function FunctionsForm({
   const selectedConditionIndex = useEditorStore((state) => state.selectedConditionIndex);
   const scrollTarget = useEditorStore((state) => state.scrollTarget);
   const setScrollTarget = useEditorStore((state) => state.setScrollTarget);
+  const selectNode = useEditorStore((state) => state.selectNode);
 
   // Derive highlighted function index from store for scroll-into-view
   const highlightedFunctionIndex = selectedNodeId === currentNodeId ? selectedFunctionIndex : null;
@@ -116,7 +117,12 @@ export default function FunctionsForm({
   };
 
   const addItem = () => {
+    const newIndex = items.length;
     onChange([...items, { name: "", description: "" }]);
+    // Automatically select and expand the newly added function
+    if (currentNodeId) {
+      selectNode(currentNodeId, newIndex, null);
+    }
   };
 
   const removeItem = (index: number) => {
