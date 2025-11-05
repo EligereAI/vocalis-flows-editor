@@ -1,6 +1,6 @@
 "use client";
 
-import { X } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useId } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -45,7 +45,7 @@ export function ConditionItem({
       ref={conditionRef}
       className="rounded-md border border-neutral-200 dark:border-neutral-700 p-3 space-y-3 bg-neutral-50/50 dark:bg-neutral-800/30"
     >
-      <div className="flex items-center gap-2">
+      <div className="flex items-start gap-2">
         <div className="space-y-2 flex-1">
           <label htmlFor={conditionOperatorId} className="text-xs opacity-60">
             Operator
@@ -96,18 +96,16 @@ export function ConditionItem({
             placeholder="Value to compare"
           />
         </div>
-        <div className="flex items-end">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8" onClick={onRemove}>
-                  <X className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Remove condition</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8" onClick={onRemove}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Remove condition</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
       <div className="space-y-2">
         <label htmlFor={conditionNextNodeId} className="text-xs opacity-60">
@@ -153,4 +151,3 @@ export function ConditionItem({
     </div>
   );
 }
-

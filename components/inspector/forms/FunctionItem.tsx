@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ChevronRight, Plus, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -215,7 +215,7 @@ export const FunctionItem = React.forwardRef<HTMLDivElement, FunctionItemProps>(
                     onRemove();
                   }}
                 >
-                  <X className="h-4 w-4" />
+                  <Trash2 className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Remove function</TooltipContent>

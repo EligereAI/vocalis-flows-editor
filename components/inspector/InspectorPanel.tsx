@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { showToast } from "@/components/ui/Toast";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useEditorStore } from "@/lib/store/editorStore";
 import { generateNodeIdFromLabel } from "@/lib/utils/nodeId";
 import { deriveNodeType } from "@/lib/utils/nodeType";
@@ -167,7 +168,7 @@ export default function InspectorPanel({
 
   return (
     <aside
-      className="relative shrink-0 border-l bg-white/70 backdrop-blur dark:bg-black/40 flex flex-col overflow-hidden h-full"
+      className="relative z-20 shrink-0 border-l bg-white/70 backdrop-blur dark:bg-black/40 flex flex-col overflow-hidden h-full"
       style={{ width: `${inspectorPanelWidth}px` }}
     >
       {/* Resize handle */}
@@ -182,16 +183,21 @@ export default function InspectorPanel({
       {/* Header */}
       <div className="mb-2 flex items-center justify-between px-3 pt-3 text-xs font-semibold uppercase opacity-70 shrink-0">
         <span>Inspector</span>
-        <Button
-          variant="secondary"
-          size="sm"
-          className="h-6 text-[10px] normal-case px-2"
-          onClick={() => onDelete(id, "node")}
-          title="Delete node"
-          aria-label="Delete selected node"
-        >
-          Delete
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="h-6 w-6"
+                onClick={() => onDelete(id, "node")}
+              >
+                <Trash2 />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="left">Delete node</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
 
       {/* Tabs */}

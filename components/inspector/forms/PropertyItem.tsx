@@ -1,6 +1,6 @@
 "use client";
 
-import { HelpCircle, X } from "lucide-react";
+import { HelpCircle, Trash2 } from "lucide-react";
 import { useId, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -166,51 +166,47 @@ export function PropertyItem({
 
   return (
     <div className="rounded-md border border-neutral-200 dark:border-neutral-700 p-3 space-y-3 bg-white dark:bg-neutral-900">
-      <div className="space-y-2">
-        <label htmlFor={propertyNameId} className="text-xs opacity-60">
-          Property name
-        </label>
-        <div className="flex items-start gap-2">
-          <div className="flex-1">
-            <Input
-              id={propertyNameId}
-              className={`h-8 text-xs flex-1 ${nameError ? "border-red-500" : ""}`}
-              value={name}
-              onChange={(e) => handleNameChange(e.target.value)}
-              onFocus={onFocus}
-              onBlur={handleNameBlur}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.currentTarget.blur();
-                }
-              }}
-              placeholder="e.g., pizza_size"
-            />
-            {nameError && <div className="mt-1 text-xs text-red-600">{nameError}</div>}
-          </div>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8" onClick={onRemove}>
-                  <X className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Remove property</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-      </div>
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Checkbox
-            checked={isRequired}
-            onCheckedChange={(checked: boolean) => onRequiredChange(checked)}
-            id={requiredCheckboxId}
-          />
-          <label htmlFor={requiredCheckboxId} className="text-xs opacity-60 cursor-pointer">
-            Required
+      <div className="flex items-start gap-2">
+        <div className="space-y-2 flex-1">
+          <label htmlFor={propertyNameId} className="text-xs opacity-60">
+            Property name
           </label>
+          <Input
+            id={propertyNameId}
+            className={`h-8 text-xs flex-1 ${nameError ? "border-red-500" : ""}`}
+            value={name}
+            onChange={(e) => handleNameChange(e.target.value)}
+            onFocus={onFocus}
+            onBlur={handleNameBlur}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.currentTarget.blur();
+              }
+            }}
+            placeholder="e.g., pizza_size"
+          />
+          {nameError && <div className="mt-1 text-xs text-red-600">{nameError}</div>}
         </div>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8" onClick={onRemove}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Remove property</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+      <div className="flex items-center gap-2">
+        <Checkbox
+          checked={isRequired}
+          onCheckedChange={(checked: boolean) => onRequiredChange(checked)}
+          id={requiredCheckboxId}
+        />
+        <label htmlFor={requiredCheckboxId} className="text-xs opacity-60 cursor-pointer">
+          Required
+        </label>
       </div>
       <div className="space-y-2">
         <label htmlFor={propertyTypeId} className="text-xs opacity-60">

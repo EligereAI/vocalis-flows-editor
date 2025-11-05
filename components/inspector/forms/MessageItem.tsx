@@ -1,6 +1,6 @@
 "use client";
 
-import { X } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useId } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -51,7 +51,7 @@ export function MessageItem({ message, index, onUpdate, onRemove }: MessageItemP
           <Tooltip>
             <TooltipTrigger asChild>
               <Button variant="ghost" size="sm" className="h-8 w-8" onClick={onRemove}>
-                <X className="h-4 w-4" />
+                <Trash2 className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>Remove message</TooltipContent>
@@ -73,4 +73,3 @@ export function MessageItem({ message, index, onUpdate, onRemove }: MessageItemP
     </div>
   );
 }
-
