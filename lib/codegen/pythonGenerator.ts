@@ -504,7 +504,7 @@ ${generateGlobalFunctions(flow)}
 #         llm=llm,
 #         context_aggregator=context_aggregator,
 #         transport=transport,
-#         global_functions=[${globalFuncRefs}],
+#         # global_functions=[${globalFuncRefs}],
 #     )
 #     
 #     @transport.event_handler("on_client_connected")
