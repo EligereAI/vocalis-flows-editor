@@ -43,4 +43,4 @@ export type FlowNode = Node<FlowNodeData, "initial" | "node" | "end" | "decision
 export type FlowEdge = Edge;
 
 // React Flow instance type
-export type ReactFlowInstance = RFInstance<FlowNodeData, FlowEdge>;
+export type ReactFlowInstance = RFInstance<FlowNode, FlowEdge>;
