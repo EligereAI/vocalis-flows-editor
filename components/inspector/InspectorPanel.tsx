@@ -2,7 +2,7 @@
 
 import { Node } from "@xyflow/react";
 import { ChevronDown, ChevronUp, Trash2 } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -98,6 +98,15 @@ export default function InspectorPanel({
     document.addEventListener("mouseup", handleMouseUp);
   };
 
+  const [activeTab, setActiveTab] = useState<string>(
+    selectedFunctionIndex !== null ? "functions" : "general"
+  );
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setActiveTab(selectedFunctionIndex !== null ? "functions" : "general");
+  }, [selectedFunctionIndex]);
+
   // Early return after all hooks
   if (!selected) {
     return (
@@ -135,7 +144,9 @@ export default function InspectorPanel({
 
       {/* Header */}
       <div className="mb-2 flex items-center justify-between px-3 pt-3 text-xs font-semibold uppercase opacity-70 shrink-0">
-        <span>Inspector</span>
+        <span>
+          Inspector: <code className="text-xs font-mono lowercase">{id}</code>
+        </span>
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -154,7 +165,8 @@ export default function InspectorPanel({
       </div>
 
       <Tabs
-        defaultValue={selectedFunctionIndex !== null ? "functions" : "general"}
+        value={activeTab}
+        onValueChange={setActiveTab}
         className="flex flex-col flex-1 min-h-0 px-3"
       >
         <TabsList className="grid w-full grid-cols-4 mb-2 shrink-0">
@@ -191,15 +203,6 @@ export default function InspectorPanel({
                 className="text-sm"
                 aria-label="Node label"
               />
-            </div>
-            <div>
-              <div className="mb-1 text-xs font-medium opacity-80">ID (auto-generated)</div>
-              <div
-                className="truncate font-mono text-xs text-neutral-500"
-                aria-label={`Node ID: ${id}`}
-              >
-                {id}
-              </div>
             </div>
             {displayedType && (
               <div>
