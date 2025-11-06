@@ -3,6 +3,7 @@
 import {
   ChevronRight,
   Download,
+  FilePlusCorner,
   FileText,
   MoreHorizontal,
   Redo2,
@@ -146,7 +147,8 @@ export default function Toolbar({
           </TooltipProvider>
         )}
         <Button variant="secondary" size="sm" onClick={onNewFlow} title="Create a new flow">
-          New Flow
+          <FilePlusCorner className="h-4 w-4" />
+          <span className="sr-only sm:not-sr-only">New Flow</span>
         </Button>
         <div className="w-px bg-neutral-300 dark:bg-neutral-700" />
         <Tooltip>
@@ -159,6 +161,7 @@ export default function Toolbar({
               className="px-2"
             >
               <Undo2 className="h-4 w-4" />
+              <span className="sr-only md:not-sr-only">Undo</span>
             </Button>
           </TooltipTrigger>
           <TooltipContent>
@@ -175,6 +178,7 @@ export default function Toolbar({
               className="px-2"
             >
               <Redo2 className="h-4 w-4" />
+              <span className="sr-only md:not-sr-only">Redo</span>
             </Button>
           </TooltipTrigger>
           <TooltipContent>
@@ -182,21 +186,45 @@ export default function Toolbar({
           </TooltipContent>
         </Tooltip>
         <div className="w-px bg-neutral-300 dark:bg-neutral-700" />
+        {/* Import button - hidden on mobile, shown on larger screens */}
+        <Input
+          ref={inputRef}
+          type="file"
+          accept="application/json"
+          className="hidden"
+          onChange={(e) => e.target.files && onImport(e.target.files[0], e.target)}
+        />
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => inputRef.current?.click()}
+          className="hidden sm:flex"
+        >
+          <Upload className="h-4 w-4 sm:mr-1.5" />
+          <span className="sr-only sm:not-sr-only">Import</span>
+        </Button>
+        {/* Export dropdown - hidden on mobile, shown on larger screens */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="secondary" size="sm" className="gap-1.5">
-              <MoreHorizontal className="h-4 w-4" />
-              <span className="hidden sm:inline">More</span>
+            <Button variant="secondary" size="sm" className="hidden sm:flex gap-1.5">
+              <Download className="h-4 w-4" />
+              <span className="sr-only sm:not-sr-only">Export</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <Input
-              ref={inputRef}
-              type="file"
-              accept="application/json"
-              className="hidden"
-              onChange={(e) => e.target.files && onImport(e.target.files[0], e.target)}
-            />
+            <DropdownMenuItem onClick={onExport}>Export JSON</DropdownMenuItem>
+            <DropdownMenuItem onClick={onExportPython}>Export Python</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        {/* More menu - shown on mobile only, contains Import, Export, and Examples */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="secondary" size="sm" className="gap-1.5 sm:hidden">
+              <MoreHorizontal className="h-4 w-4" />
+              <span className="sr-only">More</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => inputRef.current?.click()}>
               <Upload className="mr-2 h-4 w-4" />
               Import
@@ -236,6 +264,32 @@ export default function Toolbar({
                 }}
               >
                 <FileText className="mr-2 h-4 w-4" />
+                {ex.name}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        {/* Load Examples dropdown - shown on larger screens only */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="secondary" size="sm" className="hidden sm:flex gap-1.5">
+              <FileText className="h-4 w-4" />
+              <span className="hidden sm:inline">Load Example</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {EXAMPLES.map((ex) => (
+              <DropdownMenuItem
+                key={ex.id}
+                onClick={() => {
+                  const rf = flowJsonToReactFlow(ex.json as FlowJson);
+                  setNodes(rf.nodes as FlowNode[]);
+                  setEdges(rf.edges as FlowEdge[]);
+                  setTimeout(() => {
+                    rfInstance?.fitView?.({ padding: 0.2, duration: 300 });
+                  }, 100);
+                }}
+              >
                 {ex.name}
               </DropdownMenuItem>
             ))}

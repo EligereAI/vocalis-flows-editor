@@ -158,7 +158,7 @@ export default function InspectorPanel({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 w-6 p-0"
+                  className="h-6 w-6 p-0 sm:hidden"
                   onClick={(e) => {
                     e.stopPropagation();
                     selectNode(null);
