@@ -1,7 +1,7 @@
 "use client";
 
+import type { Node } from "@xyflow/react";
 import { ChevronLeft } from "lucide-react";
-import type { Node } from "reactflow";
 
 import { Button } from "@/components/ui/button";
 import { NODE_TEMPLATES } from "@/lib/nodes/templates";

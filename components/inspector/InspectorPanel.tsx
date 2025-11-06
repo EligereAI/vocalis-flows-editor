@@ -1,8 +1,8 @@
 "use client";
 
+import { Node } from "@xyflow/react";
 import { ChevronDown, ChevronUp, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Node } from "reactflow";
+import { useCallback, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { showToast } from "@/components/ui/Toast";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useEditorStore } from "@/lib/store/editorStore";
+import { FlowNodeData } from "@/lib/types/flowTypes";
 import { generateNodeIdFromLabel } from "@/lib/utils/nodeId";
 import { deriveNodeType } from "@/lib/utils/nodeType";
 
@@ -22,7 +23,7 @@ import MessagesForm from "./forms/MessagesForm";
 
 type Props = {
   nodes: Node[];
-  onChange: (next: { id: string; data: any }) => void;
+  onChange: (next: { id: string; data: FlowNodeData }) => void;
   onDelete: (id: string, kind: "node" | "edge") => void;
   onRenameNode?: (oldId: string, newId: string) => void;
   availableNodeIds?: string[];
@@ -37,32 +38,17 @@ export default function InspectorPanel({
 }: Props) {
   const selectedNodeId = useEditorStore((state) => state.selectedNodeId);
   const selectedFunctionIndex = useEditorStore((state) => state.selectedFunctionIndex);
-  const selectedConditionIndex = useEditorStore((state) => state.selectedConditionIndex);
   const inspectorPanelWidth = useEditorStore((state) => state.inspectorPanelWidth);
   const setInspectorPanelWidth = useEditorStore((state) => state.setInspectorPanelWidth);
   const setIsInspectorResizing = useEditorStore((state) => state.setIsInspectorResizing);
 
   const selected = selectedNodeId ? (nodes.find((n) => n.id === selectedNodeId) ?? null) : null;
   const id = selected?.id;
-  const data = selected?.data;
+  const data = selected?.data as FlowNodeData;
   // Derive the displayed type from the node data (especially post_actions)
   const displayedType = deriveNodeType(data, selected?.type);
 
   const [showJson, setShowJson] = useState(false);
-  const [activeTab, setActiveTab] = useState<string>("general");
-  const prevSelectedNodeIdRef = useRef<string | null>(selectedNodeId);
-
-  // Automatically switch to Functions tab when a function is selected (decision nodes/edges)
-  // Reset to General tab when node changes and no function is selected
-  useEffect(() => {
-    if (selectedFunctionIndex !== null) {
-      setActiveTab("functions");
-    } else if (selectedNodeId && prevSelectedNodeIdRef.current !== selectedNodeId) {
-      // Node changed and no function selected - reset to general
-      setActiveTab("general");
-    }
-    prevSelectedNodeIdRef.current = selectedNodeId;
-  }, [selectedFunctionIndex, selectedConditionIndex, selectedNodeId]);
 
   const update = useCallback(
     (partial: Partial<{ label: string; [k: string]: unknown }>) => {
@@ -167,10 +153,8 @@ export default function InspectorPanel({
         </TooltipProvider>
       </div>
 
-      {/* Tabs */}
       <Tabs
-        value={activeTab}
-        onValueChange={setActiveTab}
+        defaultValue={selectedFunctionIndex !== null ? "functions" : "general"}
         className="flex flex-col flex-1 min-h-0 px-3"
       >
         <TabsList className="grid w-full grid-cols-4 mb-2 shrink-0">
@@ -188,7 +172,6 @@ export default function InspectorPanel({
           </TabsTrigger>
         </TabsList>
 
-        {/* General Tab */}
         <TabsContent
           value="general"
           className="flex-1 overflow-y-auto min-h-0 space-y-4 pr-1 mt-0 pb-4"
@@ -249,7 +232,6 @@ export default function InspectorPanel({
           </div>
         </TabsContent>
 
-        {/* Messages Tab */}
         <TabsContent
           value="messages"
           className="flex-1 overflow-y-auto min-h-0 space-y-4 pr-1 mt-0 pb-4"
@@ -272,7 +254,6 @@ export default function InspectorPanel({
           </div>
         </TabsContent>
 
-        {/* Functions Tab */}
         <TabsContent value="functions" className="flex-1 overflow-y-auto min-h-0 pr-1 mt-0 pb-4">
           <div className="rounded-lg border bg-neutral-50/50 dark:bg-neutral-900/30 p-3">
             <FunctionsForm
@@ -284,7 +265,6 @@ export default function InspectorPanel({
           </div>
         </TabsContent>
 
-        {/* Actions Tab */}
         <TabsContent
           value="actions"
           className="flex-1 overflow-y-auto min-h-0 space-y-4 pr-1 mt-0 pb-4"
@@ -306,7 +286,6 @@ export default function InspectorPanel({
         </TabsContent>
       </Tabs>
 
-      {/* JSON Toggle Section */}
       <div className="border-t border-neutral-200 dark:border-neutral-700 px-3 py-2 shrink-0">
         <Button
           variant="ghost"

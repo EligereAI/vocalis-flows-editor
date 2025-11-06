@@ -1,18 +1,19 @@
-import type { Edge, Node } from "reactflow";
+import type { Edge } from "@xyflow/react";
 
 import type { FlowFunctionJson } from "@/lib/schema/flow.schema";
+import type { FlowNode } from "@/lib/types/flowTypes";
 
 import { generateDecisionNodeId } from "./decisionNodes";
 
 /**
  * Derive all edges from node functions
  */
-export function deriveEdgesFromNodes(nodes: Node[]): Edge[] {
+export function deriveEdgesFromNodes(nodes: FlowNode[]): Edge[] {
   const edges: Edge[] = [];
   const regularNodes = nodes.filter((n) => n.type !== "decision");
 
   regularNodes.forEach((node) => {
-    const functions = ((node.data as any)?.functions as FlowFunctionJson[] | undefined) ?? [];
+    const functions = (node.data?.functions ?? []) as FlowFunctionJson[];
     functions.forEach((func) => {
       if (func.decision) {
         const decisionNodeId = generateDecisionNodeId(node.id, func.name);

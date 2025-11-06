@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ChevronRight, HelpCircle, Info, Plus } from "lucide-react";
+import { ChevronDown, ChevronRight, HelpCircle, Plus } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";

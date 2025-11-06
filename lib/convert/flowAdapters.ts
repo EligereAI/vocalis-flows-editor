@@ -1,4 +1,4 @@
-import type { Edge, Node } from "reactflow";
+import type { Edge, Node } from "@xyflow/react";
 
 import type { FlowFunctionJson, FlowJson } from "@/lib/schema/flow.schema";
 import { deriveNodeType } from "@/lib/utils/nodeType";
@@ -34,7 +34,7 @@ export function reactFlowToFlowJson(nodes: Node[], edges: Edge[]): FlowJson {
         const position = decisionNodePositions.get(decisionNodeId);
         if (position) {
           // Update the function's decision with the position
-          (func as any).decision = {
+          func.decision = {
             ...func.decision,
             decision_node_position: position,
           };
@@ -74,8 +74,8 @@ export function flowJsonToReactFlow(flow: FlowJson): { nodes: Node[]; edges: Edg
     const derivedType = deriveNodeType(n.data, n.type);
     nodes.push({
       id: n.id,
-      type: derivedType as any,
-      position: n.position as any,
+      type: derivedType,
+      position: n.position,
       data: { ...n.data, type: derivedType }, // Preserve derived type in data for React Flow
     });
   });
@@ -92,8 +92,8 @@ export function flowJsonToReactFlow(flow: FlowJson): { nodes: Node[]; edges: Edg
         const position = savedPosition
           ? { x: savedPosition.x, y: savedPosition.y }
           : {
-              x: (node.position as any).x,
-              y: (node.position as any).y + 150,
+              x: node.position.x,
+              y: node.position.y + 150,
             };
         const decisionNode: Node = {
           id: decisionNodeId,

@@ -1,4 +1,5 @@
-import type { Node } from "reactflow";
+import type { FlowFunctionJson } from "@/lib/schema/flow.schema";
+import type { FlowNode, FlowNodeData } from "@/lib/types/flowTypes";
 
 import { deriveNodeType } from "./nodeType";
 
@@ -6,15 +7,15 @@ import { deriveNodeType } from "./nodeType";
  * Update a node's data and derive its type
  */
 export function updateNodeData(
-  nodes: Node[],
+  nodes: FlowNode[],
   nodeId: string,
-  updates: Partial<Record<string, unknown>>
-): Node[] {
+  updates: Partial<FlowNodeData>
+): FlowNode[] {
   return nodes.map((n) => {
     if (n.id === nodeId) {
       const newData = { ...n.data, ...updates };
       const derivedType = deriveNodeType(newData, n.type as string);
-      return { ...n, type: derivedType, data: newData };
+      return { ...n, type: derivedType as FlowNode["type"], data: newData };
     }
     return n;
   });
@@ -23,17 +24,21 @@ export function updateNodeData(
 /**
  * Update function references when a node ID changes
  */
-export function updateFunctionReferences(nodes: Node[], oldId: string, newId: string): Node[] {
+export function updateFunctionReferences(
+  nodes: FlowNode[],
+  oldId: string,
+  newId: string
+): FlowNode[] {
   return nodes.map((node) => {
-    const nodeData = node.data as any;
-    const functions = (nodeData?.functions || []) as any[];
-    const updatedFunctions = functions.map((func: any) => {
+    const nodeData = node.data as FlowNodeData;
+    const functions = (nodeData?.functions || []) as FlowFunctionJson[];
+    const updatedFunctions = functions.map((func) => {
       if (func.next_node_id === oldId) {
         return { ...func, next_node_id: newId };
       }
       // Also update decision condition references
       if (func.decision) {
-        const updatedConditions = func.decision.conditions.map((cond: any) => {
+        const updatedConditions = func.decision.conditions.map((cond) => {
           if (cond.next_node_id === oldId) {
             return { ...cond, next_node_id: newId };
           }

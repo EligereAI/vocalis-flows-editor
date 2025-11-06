@@ -28,7 +28,7 @@ function generateTypeDefinition(func: FlowFunctionJson): string {
     return "";
   }
 
-  const fields = Object.entries(props).map(([key, prop]: [string, any]) => {
+  const fields = Object.entries(props).map(([key, prop]) => {
     const pyType =
       prop.type === "integer"
         ? "int"
@@ -83,7 +83,7 @@ function generateFunction(func: FlowFunctionJson): {
   // FlowsFunctionSchema requires properties and required to always be set
   let propertiesBlock = "";
   if (Object.keys(props).length > 0) {
-    const propLines = Object.entries(props).map(([key, prop]: [string, any]) => {
+    const propLines = Object.entries(props).map(([key, prop]) => {
       return `            "${key}": ${formatProperty(prop, "            ")}`;
     });
     propertiesBlock = `,\n        properties={\n${propLines.join(",\n")}\n        }`;
@@ -107,7 +107,7 @@ function generateFunction(func: FlowFunctionJson): {
   const argExtraction =
     Object.keys(props).length > 0
       ? Object.entries(props)
-          .map(([key, prop]: [string, any]) => {
+          .map(([key, prop]) => {
             const pyType =
               prop.type === "integer"
                 ? "int"
@@ -229,8 +229,8 @@ function generateNodeFunction(node: FlowNodeJson): { nodeCode: string; typeDefs:
   const roleMessages = (data.role_messages as MessageJson[] | undefined) || [];
   const taskMessages = (data.task_messages as MessageJson[] | undefined) || [];
   const functions = (data.functions as FlowFunctionJson[] | undefined) || [];
-  const preActions = (data.pre_actions || []) as any[];
-  const postActions = (data.post_actions || []) as any[];
+  const preActions = data.pre_actions || [];
+  const postActions = data.post_actions || [];
   const contextStrategy = data.context_strategy as
     | { strategy: "APPEND" | "RESET" | "RESET_WITH_SUMMARY"; summary_prompt?: string }
     | undefined;
@@ -342,7 +342,7 @@ function generateGlobalFunctions(flow: FlowJson): string {
     // FlowsFunctionSchema requires properties and required to always be set
     let propertiesBlock = "";
     if (Object.keys(props).length > 0) {
-      const propLines = Object.entries(props).map(([key, prop]: [string, any]) => {
+      const propLines = Object.entries(props).map(([key, prop]) => {
         return `            "${key}": ${formatProperty(prop, "            ")}`;
       });
       propertiesBlock = `,\n        properties={\n${propLines.join(",\n")}\n        }`;
@@ -355,7 +355,7 @@ function generateGlobalFunctions(flow: FlowJson): string {
     const argExtraction =
       Object.keys(props).length > 0
         ? Object.entries(props)
-            .map(([key, prop]: [string, any]) => {
+            .map(([key, prop]) => {
               const pyType =
                 prop.type === "integer"
                   ? "int"

@@ -1,14 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import { flowJsonToReactFlow, reactFlowToFlowJson } from "@/lib/convert/flowAdapters";
+import { FlowEdge, FlowNode } from "@/lib/types/flowTypes";
 
 describe("adapters", () => {
   it("converts React Flow to Flow JSON and back", () => {
     const nodes = [
       { id: "a", type: "start", position: { x: 0, y: 0 }, data: { label: "A" } },
       { id: "b", type: "end", position: { x: 100, y: 0 }, data: { label: "B" } },
-    ] as any;
-    const edges = [{ id: "e1", source: "a", target: "b" }] as any;
+    ] as FlowNode[];
+    const edges = [{ id: "e1", source: "a", target: "b" }] as FlowEdge[];
     const json = reactFlowToFlowJson(nodes, edges);
     expect(json.nodes.length).toBe(2);
     expect(json.edges.length).toBe(1);

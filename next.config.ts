@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   experimental: {
     optimizePackageImports: [
-      'reactflow'
+      '@xyflow/react'
     ]
   }
 };

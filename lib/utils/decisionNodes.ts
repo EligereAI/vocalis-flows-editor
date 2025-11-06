@@ -1,6 +1,5 @@
-import type { Node } from "reactflow";
-
 import type { FlowFunctionJson } from "@/lib/schema/flow.schema";
+import type { FlowNode } from "@/lib/types/flowTypes";
 
 /**
  * Parse decision node ID to extract source node ID and function name
@@ -27,15 +26,15 @@ export function generateDecisionNodeId(sourceNodeId: string, functionName: strin
  */
 export function findDecisionSource(
   decisionNodeId: string,
-  nodes: Node[]
-): { sourceNode: Node; functionIndex: number; function: FlowFunctionJson } | null {
+  nodes: FlowNode[]
+): { sourceNode: FlowNode; functionIndex: number; function: FlowFunctionJson } | null {
   const parsed = parseDecisionNodeId(decisionNodeId);
   if (!parsed) return null;
 
   const sourceNode = nodes.find((n) => n.id === parsed.sourceNodeId);
   if (!sourceNode) return null;
 
-  const functions = ((sourceNode.data as any)?.functions as FlowFunctionJson[] | undefined) ?? [];
+  const functions = (sourceNode.data?.functions ?? []) as FlowFunctionJson[];
   const functionIndex = functions.findIndex(
     (f) => f.name === parsed.functionName && f.decision !== undefined
   );

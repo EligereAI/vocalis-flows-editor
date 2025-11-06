@@ -1,18 +1,19 @@
 "use client";
 
-import "reactflow/dist/style.css";
+import "@xyflow/react/dist/style.css";
 
-import { extractDecisionNodeFromChange, useDecisionNodes } from "hooks/useDecisionNodes";
-import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   Background,
+  ColorMode,
   Controls,
-  Edge,
-  Node,
+  type Edge,
+  type NodeChange,
   ReactFlow,
   useEdgesState,
   useNodesState,
-} from "reactflow";
+} from "@xyflow/react";
+import { useTheme } from "next-themes";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import Toolbar from "@/components/header/Toolbar";
 import InspectorPanel from "@/components/inspector/InspectorPanel";
@@ -21,10 +22,13 @@ import BaseNode from "@/components/nodes/BaseNode";
 import DecisionNode from "@/components/nodes/DecisionNode";
 import NodePalette from "@/components/palette/NodePalette";
 import ToastContainer from "@/components/ui/Toast";
+import { extractDecisionNodeFromChange, useDecisionNodes } from "@/hooks/useDecisionNodes";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { getTemplateByType } from "@/lib/nodes/templates";
+import type { FlowFunctionJson } from "@/lib/schema/flow.schema";
 import { loadCurrent, saveCurrent } from "@/lib/storage/localStore";
 import { useEditorStore } from "@/lib/store/editorStore";
+import type { FlowEdge, FlowNode, FlowNodeData, ReactFlowInstance } from "@/lib/types/flowTypes";
 import { UndoManager } from "@/lib/undo/undoManager";
 import {
   handleDecisionNodeConnection,
@@ -65,8 +69,8 @@ function useInitialGraph() {
           data: { ...initialData, type: initialType },
           type: initialType,
         },
-      ] as any,
-      edges: [],
+      ] as FlowNode[],
+      edges: [] as Edge[],
     };
   }, []);
 }
@@ -74,11 +78,11 @@ function useInitialGraph() {
 export default function EditorShell() {
   const initial = useInitialGraph();
   const [nodes, setNodes, onNodesChangeBase] = useNodesState(initial.nodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initial.edges);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initial.edges);
 
   // Wrap onNodesChange to capture decision node position changes
   const onNodesChange = useCallback(
-    (changes: any[]) => {
+    (changes: NodeChange<FlowNode>[]) => {
       onNodesChangeBase(changes);
 
       const positionChanges = changes.filter(
@@ -91,7 +95,11 @@ export default function EditorShell() {
           const updatedNodes = currentNodes.map((n) => ({ ...n }));
 
           positionChanges.forEach((change) => {
-            const decisionInfo = extractDecisionNodeFromChange(change, currentNodes);
+            if (change.type !== "position" || !change.id || !change.position) return;
+            const decisionInfo = extractDecisionNodeFromChange(
+              { id: change.id, position: change.position },
+              currentNodes
+            );
             if (!decisionInfo) return;
 
             const sourceNodeIndex = updatedNodes.findIndex(
@@ -100,17 +108,17 @@ export default function EditorShell() {
             if (sourceNodeIndex < 0) return;
 
             const sourceNode = updatedNodes[sourceNodeIndex];
-            const functions = ((sourceNode.data as any)?.functions as any[] | undefined) ?? [];
+            const functions = (sourceNode.data?.functions ?? []) as FlowFunctionJson[];
             const functionIndex = functions.findIndex(
-              (f: any) => f.name === decisionInfo.functionName && f.decision !== undefined
+              (f) => f.name === decisionInfo.functionName && f.decision !== undefined
             );
 
-            if (functionIndex >= 0) {
+            if (functionIndex >= 0 && functions[functionIndex].decision) {
               const updatedFunctions = [...functions];
               updatedFunctions[functionIndex] = {
                 ...updatedFunctions[functionIndex],
                 decision: {
-                  ...updatedFunctions[functionIndex].decision,
+                  ...updatedFunctions[functionIndex].decision!,
                   decision_node_position: decisionInfo.position,
                 },
               };
@@ -166,8 +174,8 @@ export default function EditorShell() {
 
   // Helper: Update node data and validate function index
   const handleNodeDataUpdate = useCallback(
-    (nodeId: string, updates: Partial<any>, previousFunctions?: any[]) => {
-      const newFunctions = updates.functions as any[] | undefined;
+    (nodeId: string, updates: Partial<FlowNodeData>, previousFunctions?: FlowFunctionJson[]) => {
+      const newFunctions = updates.functions;
 
       setNodes((nds) => updateNodeData(nds, nodeId, updates));
 
@@ -180,7 +188,7 @@ export default function EditorShell() {
 
   // load current on mount if present
   useEffect(() => {
-    const saved = loadCurrent<{ nodes: Node[]; edges: Edge[] }>();
+    const saved = loadCurrent<{ nodes: FlowNode[]; edges: FlowEdge[] }>();
     if (saved?.nodes && saved?.edges) {
       setNodes(saved.nodes);
       setEdges(saved.edges);
@@ -193,8 +201,8 @@ export default function EditorShell() {
 
   // Derive edges from functions whenever nodes change
   useEffect(() => {
-    const derivedEdges = deriveEdgesFromNodes(nodes);
-    setEdges((currentEdges) => {
+    const derivedEdges = deriveEdgesFromNodes(nodes as FlowNode[]);
+    setEdges((currentEdges: Edge[]) => {
       const { newEdges } = edgesChanged(currentEdges, derivedEdges);
       return newEdges;
     });
@@ -208,8 +216,8 @@ export default function EditorShell() {
       prevSelectedNodeId.current = selectedNodeId;
       // Use setTimeout to avoid updating during render
       const timer = setTimeout(() => {
-        rfInstance.setNodes((nds: any[]) =>
-          nds.map((node: any) => ({
+        rfInstance.setNodes((nds) =>
+          nds.map((node) => ({
             ...node,
             selected: node.id === selectedNodeId,
           }))
@@ -234,7 +242,7 @@ export default function EditorShell() {
       return;
     }
     const id = setTimeout(() => {
-      undoManagerRef.current.push({ nodes: nodes as any, edges: edges as any });
+      undoManagerRef.current.push({ nodes, edges });
     }, 200);
     return () => clearTimeout(id);
   }, [nodes, edges]);
@@ -249,6 +257,8 @@ export default function EditorShell() {
     clearSelection,
     selectNode,
   });
+
+  const { theme } = useTheme();
 
   return (
     <div className="h-screen w-screen flex overflow-hidden">
@@ -312,6 +322,7 @@ export default function EditorShell() {
         style={{ height: `calc(100vh - ${showJson ? jsonEditorHeight : 0}px)` }}
       >
         <ReactFlow
+          colorMode={theme as ColorMode}
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypes}
@@ -330,7 +341,7 @@ export default function EditorShell() {
                 // Update React Flow visual selection
                 setTimeout(() => {
                   if (rfInstance) {
-                    rfInstance.setNodes((nds: Node[]) =>
+                    rfInstance.setNodes((nds) =>
                       nds.map((node) => ({
                         ...node,
                         selected: node.id === nodeId,
@@ -342,24 +353,29 @@ export default function EditorShell() {
             );
 
             if (!handled) {
-              handleRegularConnection(params, nodes, setNodes, (nodeId, functionIndex) => {
-                selectNode(nodeId, functionIndex);
-                setTimeout(() => {
-                  if (rfInstance) {
-                    rfInstance.setNodes((nds: Node[]) =>
-                      nds.map((node) => ({
-                        ...node,
-                        selected: node.id === nodeId,
-                      }))
-                    );
-                  }
-                }, 0);
-              });
+              handleRegularConnection(
+                params,
+                nodes as FlowNode[],
+                setNodes as (updater: (nodes: FlowNode[]) => FlowNode[]) => void,
+                (nodeId, functionIndex) => {
+                  selectNode(nodeId, functionIndex);
+                  setTimeout(() => {
+                    if (rfInstance) {
+                      rfInstance.setNodes((nds) =>
+                        nds.map((node) => ({
+                          ...node,
+                          selected: node.id === nodeId,
+                        }))
+                      );
+                    }
+                  }, 0);
+                }
+              );
             }
           }}
           onSelectionChange={(sel) => {
-            const n = sel.nodes?.[0] || null;
-            const e = sel.edges?.[0] || null;
+            const n = (sel.nodes?.[0] || null) as FlowNode | null;
+            const e = (sel.edges?.[0] || null) as FlowEdge | null;
             // Store handles all selection logic and validation
             selectNodeFromCanvas(n, e, nodes);
           }}
@@ -385,8 +401,11 @@ export default function EditorShell() {
             }
 
             const bounds = (e.target as HTMLElement).getBoundingClientRect();
-            const position = rfInstance?.project
-              ? rfInstance.project({ x: e.clientX - bounds.left, y: e.clientY - bounds.top })
+            const position = rfInstance?.screenToFlowPosition
+              ? rfInstance.screenToFlowPosition({
+                  x: e.clientX - bounds.left,
+                  y: e.clientY - bounds.top,
+                })
               : { x: e.clientX - bounds.left, y: e.clientY - bounds.top };
             const tmpl = getTemplateByType(type);
             const label = tmpl?.label ?? type;
@@ -394,9 +413,16 @@ export default function EditorShell() {
             const id = generateNodeIdFromLabel(label, existingIds);
             const nodeData = { label, ...(tmpl?.data ?? {}) };
             const derivedType = deriveNodeType(nodeData, type);
-            setNodes((nds) => nds.concat({ id, type: derivedType, position, data: nodeData }));
+            setNodes((nds) =>
+              nds.concat({
+                id,
+                type: derivedType as FlowNode["type"],
+                position,
+                data: nodeData,
+              } as FlowNode)
+            );
           }}
-          onInit={(instance) => setRfInstance(instance)}
+          onInit={(instance) => setRfInstance(instance as unknown as ReactFlowInstance)}
           fitView
         >
           <Controls />
@@ -421,8 +447,7 @@ export default function EditorShell() {
                 if (!selectedNodeId || selectedNodeId !== next.id) return;
 
                 const currentNode = nodes.find((n) => n.id === selectedNodeId);
-                const oldFunctions =
-                  ((currentNode?.data as any)?.functions as any[] | undefined) ?? [];
+                const oldFunctions = (currentNode?.data?.functions ?? []) as FlowFunctionJson[];
 
                 handleNodeDataUpdate(next.id, next.data, oldFunctions);
               }}
@@ -434,8 +459,7 @@ export default function EditorShell() {
                   const sourceNode = nodes.find((n) => n.id === edge.source);
                   if (!sourceNode) return;
 
-                  const functions =
-                    ((sourceNode.data as any)?.functions as any[] | undefined) ?? [];
+                  const functions = (sourceNode.data?.functions ?? []) as FlowFunctionJson[];
                   const functionIndex = functions.findIndex(
                     (f) => f.next_node_id === edge.target && f.name === (edge.label as string)
                   );

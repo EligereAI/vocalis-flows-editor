@@ -1,6 +1,6 @@
 "use client";
 
-import type { Edge, Node } from "reactflow";
+import type { Edge, Node } from "@xyflow/react";
 
 import { Button } from "@/components/ui/button";
 import { useEditorStore } from "@/lib/store/editorStore";
@@ -52,7 +52,7 @@ export default function CodePanel({ nodes, edges }: Props) {
       >
         <div className="relative h-full flex flex-col pointer-events-auto">
           <div
-            className="absolute top-0 left-0 right-0 h-1 cursor-ns-resize hover:bg-blue-500 bg-transparent z-[60] pointer-events-auto"
+            className="absolute top-0 left-0 right-0 h-1 cursor-ns-resize hover:bg-blue-500 bg-transparent z-60 pointer-events-auto"
             onMouseDown={handleResizeStart}
           />
           <CodeViewer nodes={nodes} edges={edges} />
@@ -61,7 +61,7 @@ export default function CodePanel({ nodes, edges }: Props) {
       <Button
         variant="secondary"
         size="sm"
-        className={`fixed z-[60] left-1/2 -translate-x-1/2 ${
+        className={`fixed z-60 left-1/2 -translate-x-1/2 ${
           isCodePanelResizing ? "" : "transition-all duration-300"
         }`}
         style={{

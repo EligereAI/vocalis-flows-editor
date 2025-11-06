@@ -1,7 +1,7 @@
 import { useEffect } from "react";
-import type { Node } from "reactflow";
 
 import type { FlowFunctionJson } from "@/lib/schema/flow.schema";
+import type { FlowNode } from "@/lib/types/flowTypes";
 import {
   generateDecisionNodeId,
   getDecisionNodeData,
@@ -13,18 +13,18 @@ import {
  * Creates, updates, and removes decision nodes based on function decisions
  */
 export function useDecisionNodes(
-  nodes: Node[],
-  setNodes: (updater: (nodes: Node[]) => Node[]) => void
+  nodes: FlowNode[],
+  setNodes: (updater: (nodes: FlowNode[]) => FlowNode[]) => void
 ) {
   useEffect(() => {
     const regularNodes = nodes.filter((n) => n.type !== "decision");
     const validDecisionIds = new Set<string>();
-    const decisionNodesToCreate: Node[] = [];
-    const decisionNodesToUpdate = new Map<string, Node>();
+    const decisionNodesToCreate: FlowNode[] = [];
+    const decisionNodesToUpdate = new Map<string, FlowNode>();
 
     // Collect decision nodes that should exist
     regularNodes.forEach((node) => {
-      const functions = ((node.data as any)?.functions as FlowFunctionJson[] | undefined) ?? [];
+      const functions = (node.data?.functions ?? []) as FlowFunctionJson[];
       functions.forEach((func) => {
         if (func.decision) {
           const decisionNodeId = generateDecisionNodeId(node.id, func.name);
@@ -36,10 +36,10 @@ export function useDecisionNodes(
             const decisionData = getDecisionNodeData(node.id, node.position, func);
             decisionNodesToCreate.push({
               id: decisionData.id,
-              type: "decision",
+              type: "decision" as const,
               position: decisionData.position,
               data: decisionData.data,
-            } as Node);
+            } as FlowNode);
           } else {
             // Update existing decision node if data changed
             const newData = getDecisionNodeData(node.id, node.position, func).data;
@@ -53,7 +53,7 @@ export function useDecisionNodes(
               decisionNodesToUpdate.set(decisionNodeId, {
                 ...existingNode,
                 data: newData,
-              } as Node);
+              } as FlowNode);
             }
           }
         }
@@ -101,7 +101,7 @@ export function useDecisionNodes(
  */
 export function extractDecisionNodeFromChange(
   change: { id: string; position?: { x: number; y: number } },
-  nodes: Node[]
+  nodes: FlowNode[]
 ): { sourceNodeId: string; functionName: string; position: { x: number; y: number } } | null {
   const node = nodes.find((n) => n.id === change.id);
   if (!node || node.type !== "decision" || !change.position) return null;

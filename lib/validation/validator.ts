@@ -10,7 +10,7 @@ const flowSchema = getCompiledJsonSchema();
 ajv.addSchema(flowSchema, flowSchema.$id as string);
 
 const validateFlow =
-  ajv.getSchema<FlowJson>(flowSchema.$id as string) ?? ajv.compile<FlowJson>(flowSchema as any);
+  ajv.getSchema<FlowJson>(flowSchema.$id as string) ?? ajv.compile<FlowJson>(flowSchema);
 
 export type ValidationResult = {
   valid: boolean;

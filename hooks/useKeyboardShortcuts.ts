@@ -1,14 +1,15 @@
 import { useEffect } from "react";
-import type { Edge, Node } from "reactflow";
 
+import type { FlowFunctionJson } from "@/lib/schema/flow.schema";
 import { useEditorStore } from "@/lib/store/editorStore";
+import type { FlowEdge, FlowNode } from "@/lib/types/flowTypes";
 
 interface KeyboardShortcutsProps {
-  nodes: Node[];
-  edges: Edge[];
+  nodes: FlowNode[];
+  edges: FlowEdge[];
   selectedNodeId: string | null;
   selectedFunctionIndex: number | null;
-  setNodes: (updater: (nodes: Node[]) => Node[]) => void;
+  setNodes: (updater: (nodes: FlowNode[]) => FlowNode[]) => void;
   clearSelection: () => void;
   selectNode: (nodeId: string | null, functionIndex?: number | null) => void;
 }
@@ -45,7 +46,7 @@ export function useKeyboardShortcuts({
           // Delete edge by clearing next_node_id
           const node = nodes.find((n) => n.id === selectedNodeId);
           if (node) {
-            const functions = ((node.data as any)?.functions as any[] | undefined) ?? [];
+            const functions = (node.data?.functions ?? []) as FlowFunctionJson[];
             if (functions[selectedFunctionIndex]) {
               setNodes((nds) =>
                 nds.map((n) => {
@@ -81,12 +82,12 @@ export function useKeyboardShortcuts({
           const selected = nodes.find((n) => n.id === selectedNodeId);
           if (selected) {
             const id = `${selected.type}-${Math.random().toString(36).slice(2, 8)}`;
-            const newNode = {
+            const newNode: FlowNode = {
               ...selected,
               id,
               position: { x: selected.position.x + 50, y: selected.position.y + 50 },
             };
-            setNodes((nds) => nds.concat(newNode as any));
+            setNodes((nds) => nds.concat(newNode));
             selectNode(id);
           }
         }

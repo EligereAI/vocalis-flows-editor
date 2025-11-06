@@ -1,6 +1,7 @@
-import type { Connection, Node } from "reactflow";
+import type { Connection } from "@xyflow/react";
 
 import type { DecisionConditionJson, FlowFunctionJson } from "@/lib/schema/flow.schema";
+import type { FlowNode } from "@/lib/types/flowTypes";
 import { findDecisionSource, parseDecisionNodeId } from "@/lib/utils/decisionNodes";
 import { generateNodeIdFromLabel } from "@/lib/utils/nodeId";
 
@@ -9,8 +10,8 @@ import { generateNodeIdFromLabel } from "@/lib/utils/nodeId";
  */
 export function handleDecisionNodeConnection(
   params: Connection,
-  nodes: Node[],
-  setNodes: (updater: (nodes: Node[]) => Node[]) => void,
+  nodes: FlowNode[],
+  setNodes: (updater: (nodes: FlowNode[]) => FlowNode[]) => void,
   selectNode: (nodeId: string, functionIndex: number, conditionIndex: number) => void
 ): boolean {
   if (!params.source || !params.target) return false;
@@ -33,7 +34,7 @@ export function handleDecisionNodeConnection(
     next_node_id: params.target,
   };
 
-  const updatedFunctions = [...((actualSourceNode.data as any)?.functions as FlowFunctionJson[])];
+  const updatedFunctions = [...((actualSourceNode.data?.functions ?? []) as FlowFunctionJson[])];
   updatedFunctions[functionIndex] = {
     ...func,
     decision: {
@@ -68,8 +69,8 @@ export function handleDecisionNodeConnection(
  */
 export function handleRegularConnection(
   params: Connection,
-  nodes: Node[],
-  setNodes: (updater: (nodes: Node[]) => Node[]) => void,
+  nodes: FlowNode[],
+  setNodes: (updater: (nodes: FlowNode[]) => FlowNode[]) => void,
   selectNode: (nodeId: string, functionIndex: number) => void
 ): void {
   if (!params.source || !params.target) return;
@@ -77,7 +78,7 @@ export function handleRegularConnection(
   const sourceNode = nodes.find((n) => n.id === params.source);
   if (!sourceNode) return;
 
-  const functions = ((sourceNode.data as any)?.functions as FlowFunctionJson[] | undefined) ?? [];
+  const functions = (sourceNode.data?.functions ?? []) as FlowFunctionJson[];
   const existingFunctionNames = functions.map((f) => f.name).filter(Boolean);
   const defaultFunctionName = `function_${existingFunctionNames.length + 1}`;
   const functionName = generateNodeIdFromLabel(defaultFunctionName, existingFunctionNames);

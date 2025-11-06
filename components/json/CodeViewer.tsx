@@ -1,8 +1,8 @@
 "use client";
 
 import Editor from "@monaco-editor/react";
+import { Edge, Node } from "@xyflow/react";
 import { useMemo, useState } from "react";
-import { Edge, Node } from "reactflow";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { generatePythonCode } from "@/lib/codegen/pythonGenerator";

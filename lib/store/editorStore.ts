@@ -1,7 +1,7 @@
 import { create } from "zustand";
 
-type Node = any;
-type Edge = any;
+import type { FlowFunctionJson } from "@/lib/schema/flow.schema";
+import type { FlowEdge, FlowNode, ReactFlowInstance } from "@/lib/types/flowTypes";
 
 export interface ScrollTarget {
   nodeId: string;
@@ -33,7 +33,7 @@ interface EditorState {
   showNodesPanel: boolean;
 
   // React Flow instance
-  rfInstance: any | null;
+  rfInstance: ReactFlowInstance | null;
 
   // Internal state for tracking
   _isDeletingFunction: boolean;
@@ -49,7 +49,7 @@ interface EditorState {
   setIsInspectorResizing: (isResizing: boolean) => void;
   setIsCodePanelResizing: (isResizing: boolean) => void;
   setShowNodesPanel: (show: boolean) => void;
-  setRfInstance: (instance: any | null) => void;
+  setRfInstance: (instance: ReactFlowInstance | null) => void;
 
   // Selection actions (with validation and logic)
   selectNode: (
@@ -57,15 +57,15 @@ interface EditorState {
     functionIndex?: number | null,
     conditionIndex?: number | null
   ) => void;
-  selectNodeFromEdge: (edge: Edge, nodes: Node[]) => void;
-  selectNodeFromCanvas: (node: Node | null, edge: Edge | null, nodes: Node[]) => void;
+  selectNodeFromEdge: (edge: FlowEdge, nodes: FlowNode[]) => void;
+  selectNodeFromCanvas: (node: FlowNode | null, edge: FlowEdge | null, nodes: FlowNode[]) => void;
   clearSelection: (preserveIfDeleting?: boolean) => void;
 
   // Function selection (with validation)
   selectFunction: (
     nodeId: string,
     functionIndex: number,
-    nodes: Node[],
+    nodes: FlowNode[],
     conditionIndex?: number | null
   ) => void;
   clearFunctionSelection: (preserveIfDeleting?: boolean) => void;
@@ -73,8 +73,8 @@ interface EditorState {
   // Node update helpers (with function index validation)
   validateFunctionIndexAfterUpdate: (
     nodeId: string,
-    previousFunctions: any[],
-    newFunctions: any[]
+    previousFunctions: FlowFunctionJson[],
+    newFunctions: FlowFunctionJson[]
   ) => void;
 
   // Internal helpers
@@ -159,7 +159,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
     selectNodeFromEdge: (edge, nodes) => {
       // Check if this edge leads TO a decision node (from regular node to decision node)
       const targetDecisionNode = nodes.find(
-        (n: Node) => n.id === edge.target && n.type === "decision"
+        (n: FlowNode) => n.id === edge.target && n.type === "decision"
       );
 
       if (targetDecisionNode) {
@@ -169,11 +169,11 @@ export const useEditorStore = create<EditorState>((set, get) => {
         const match = decisionNodeId.match(/^decision-(.+?)-(.+)$/);
         if (match) {
           const [, sourceNodeId, functionName] = match;
-          const sourceNode = nodes.find((n: Node) => n.id === sourceNodeId);
+          const sourceNode = nodes.find((n: FlowNode) => n.id === sourceNodeId);
           if (sourceNode) {
-            const functions = ((sourceNode.data as any)?.functions as any[] | undefined) ?? [];
+            const functions = (sourceNode.data?.functions ?? []) as FlowFunctionJson[];
             const functionIndex = functions.findIndex(
-              (f: any) => f.name === functionName && f.decision !== undefined
+              (f) => f.name === functionName && f.decision !== undefined
             );
 
             if (functionIndex >= 0) {
@@ -186,7 +186,9 @@ export const useEditorStore = create<EditorState>((set, get) => {
       }
 
       // Check if this edge comes FROM a decision node (condition edges)
-      const decisionNode = nodes.find((n: Node) => n.id === edge.source && n.type === "decision");
+      const decisionNode = nodes.find(
+        (n: FlowNode) => n.id === edge.source && n.type === "decision"
+      );
 
       if (decisionNode) {
         // Edge from decision node - extract source node and function from decision node ID
@@ -195,11 +197,11 @@ export const useEditorStore = create<EditorState>((set, get) => {
         const match = decisionNodeId.match(/^decision-(.+?)-(.+)$/);
         if (match) {
           const [, sourceNodeId, functionName] = match;
-          const sourceNode = nodes.find((n: Node) => n.id === sourceNodeId);
+          const sourceNode = nodes.find((n: FlowNode) => n.id === sourceNodeId);
           if (sourceNode) {
-            const functions = ((sourceNode.data as any)?.functions as any[] | undefined) ?? [];
+            const functions = (sourceNode.data?.functions ?? []) as FlowFunctionJson[];
             const functionIndex = functions.findIndex(
-              (f: any) => f.name === functionName && f.decision !== undefined
+              (f) => f.name === functionName && f.decision !== undefined
             );
 
             if (functionIndex >= 0) {
@@ -220,18 +222,17 @@ export const useEditorStore = create<EditorState>((set, get) => {
                   conditionIndex = parseInt(condMatch[1], 10);
                 } else {
                   // Fallback: find by matching target node
-                  const condIndex = func.decision.conditions.findIndex(
-                    (c: any) => c.next_node_id === edge.target
-                  );
+                  const condIndex =
+                    func.decision?.conditions.findIndex((c) => c.next_node_id === edge.target) ??
+                    -1;
                   if (condIndex >= 0) {
                     conditionIndex = condIndex;
                   }
                 }
               } else {
                 // Fallback: find by matching target node
-                const condIndex = func.decision.conditions.findIndex(
-                  (c: any) => c.next_node_id === edge.target
-                );
+                const condIndex =
+                  func.decision?.conditions.findIndex((c) => c.next_node_id === edge.target) ?? -1;
                 if (condIndex >= 0) {
                   conditionIndex = condIndex;
                 }
@@ -245,12 +246,12 @@ export const useEditorStore = create<EditorState>((set, get) => {
       }
 
       // Regular edge - find function by next_node_id
-      const sourceNode = nodes.find((n: Node) => n.id === edge.source);
+      const sourceNode = nodes.find((n: FlowNode) => n.id === edge.source);
       if (!sourceNode) return;
 
-      const functions = ((sourceNode.data as any)?.functions as any[] | undefined) ?? [];
+      const functions = (sourceNode.data?.functions ?? []) as FlowFunctionJson[];
       const functionIndex = functions.findIndex(
-        (f: any) => f.next_node_id === edge.target && f.name === (edge.label as string)
+        (f) => f.next_node_id === edge.target && f.name === (edge.label as string)
       );
 
       if (functionIndex >= 0) {
@@ -267,11 +268,11 @@ export const useEditorStore = create<EditorState>((set, get) => {
         // Check if this is a decision node
         if (node.type === "decision" && node.data?.sourceNodeId && node.data?.functionName) {
           // Find the source node and function index
-          const sourceNode = nodes.find((n: Node) => n.id === node.data.sourceNodeId);
+          const sourceNode = nodes.find((n: FlowNode) => n.id === node.data.sourceNodeId);
           if (sourceNode) {
-            const functions = ((sourceNode.data as any)?.functions as any[] | undefined) ?? [];
+            const functions = (sourceNode.data?.functions ?? []) as FlowFunctionJson[];
             const functionIndex = functions.findIndex(
-              (f: any) => f.name === node.data.functionName && f.decision !== undefined
+              (f) => f.name === node.data.functionName && f.decision !== undefined
             );
             if (functionIndex >= 0) {
               get().selectFunction(sourceNode.id, functionIndex, nodes, null);
@@ -312,10 +313,10 @@ export const useEditorStore = create<EditorState>((set, get) => {
 
     // Function selection with validation
     selectFunction: (nodeId, functionIndex, nodes, conditionIndex = null) => {
-      const node = nodes.find((n: Node) => n.id === nodeId);
+      const node = nodes.find((n: FlowNode) => n.id === nodeId);
       if (!node) return;
 
-      const functions = ((node.data as any)?.functions as any[] | undefined) ?? [];
+      const functions = (node.data?.functions ?? []) as FlowFunctionJson[];
       // Validate function index
       if (functionIndex >= 0 && functionIndex < functions.length) {
         get().selectNode(nodeId, functionIndex, conditionIndex);

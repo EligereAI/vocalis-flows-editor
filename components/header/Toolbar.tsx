@@ -2,8 +2,8 @@
 
 import { ChevronRight, Download, FileText, Redo2, Undo2 } from "lucide-react";
 import { useRef } from "react";
-import { Edge, Node } from "reactflow";
 
+import { ThemeSwitch } from "@/components/ThemeSwitch";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -17,14 +17,16 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { generatePythonCode } from "@/lib/codegen/pythonGenerator";
 import { flowJsonToReactFlow, reactFlowToFlowJson } from "@/lib/convert/flowAdapters";
 import { EXAMPLES } from "@/lib/examples";
+import { FlowJson } from "@/lib/schema/flow.schema";
 import { useEditorStore } from "@/lib/store/editorStore";
+import type { FlowEdge, FlowNode } from "@/lib/types/flowTypes";
 import { customGraphChecks, validateFlowJson } from "@/lib/validation/validator";
 
 type Props = {
-  nodes: Node[];
-  edges: Edge[];
-  setNodes: (nodes: Node[]) => void;
-  setEdges: (fn: any) => void;
+  nodes: FlowNode[];
+  edges: FlowEdge[];
+  setNodes: (nodes: FlowNode[]) => void;
+  setEdges: (edges: FlowEdge[] | ((edges: FlowEdge[]) => FlowEdge[])) => void;
   canUndo: boolean;
   canRedo: boolean;
   onUndo: () => void;
@@ -97,8 +99,8 @@ export default function Toolbar({
           return;
         }
         const rf = flowJsonToReactFlow(json);
-        setNodes(rf.nodes);
-        setEdges(rf.edges);
+        setNodes(rf.nodes as FlowNode[]);
+        setEdges(rf.edges as FlowEdge[]);
         showToast("Flow imported successfully", "success");
         setTimeout(() => {
           rfInstance?.fitView?.({ padding: 0.2, duration: 300 });
@@ -201,9 +203,9 @@ export default function Toolbar({
               <DropdownMenuItem
                 key={ex.id}
                 onClick={() => {
-                  const rf = flowJsonToReactFlow(ex.json as any);
-                  setNodes(rf.nodes);
-                  setEdges(rf.edges);
+                  const rf = flowJsonToReactFlow(ex.json as FlowJson);
+                  setNodes(rf.nodes as FlowNode[]);
+                  setEdges(rf.edges as FlowEdge[]);
                   // Center the view after a short delay to ensure nodes are rendered
                   setTimeout(() => {
                     rfInstance?.fitView?.({ padding: 0.2, duration: 300 });
@@ -215,6 +217,8 @@ export default function Toolbar({
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
+        <div className="w-px bg-neutral-300 dark:bg-neutral-700" />
+        <ThemeSwitch />
       </div>
     </TooltipProvider>
   );
