@@ -25,8 +25,8 @@ export default function HomePage() {
       <header className="border-b bg-background/80 backdrop-blur-lg z-20">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-6 px-6 py-6">
           <div className="flex items-center gap-3">
-            <PipecatLogo height={28} />
-            <h1 className="text-2xl font-semibold">Pipecat Flows Editor</h1>
+            <PipecatLogo className="h-4 sm:h-8 w-auto" />
+            <h1 className="text-md sm:text-2xl font-semibold">Pipecat Flows Editor</h1>
           </div>
           <ThemeSwitch />
         </div>
