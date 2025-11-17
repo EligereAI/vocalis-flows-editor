@@ -29,6 +29,12 @@
       ],
       "@/styles/*": [
         "styles/*"
+      ],
+      "vitest": [
+        "node_modules/vitest"
+      ],
+      "vitest/*": [
+        "node_modules/vitest/*"
       ]
     },
     "types": [
