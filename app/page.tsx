@@ -72,8 +72,9 @@ export default function HomePage() {
               without touching code.
             </p>
             <p className="text-balance text-lg text-muted-foreground">
-              Drag-and-drop nodes, enforce schema rules, and seamlessly export flows for the Pipecat
-              runtime. Everything runs in the browser.
+              Instantly create, validate, and export conversational flows with a visual editor — no
+              coding required. Runs fully in your browser for effortless, private, and
+              lightning-fast workflow.
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
