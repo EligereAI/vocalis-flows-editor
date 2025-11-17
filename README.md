@@ -1,122 +1,91 @@
 # Pipecat Flows Visual Editor
 
-Next.js + TypeScript + Tailwind + React Flow based visual editor for dynamic Pipecat Flows. Runs 100% in the browser with localStorage autosave.
+Next.js + TypeScript + Tailwind + React Flow visual editor tailored to Pipecat Flows. The editor runs entirely in the browser, syncs state to `localStorage`, and exports Pipecat-ready JSON _and_ Python code.
 
 ## References
 
 - Pipecat Flows repo: https://github.com/pipecat-ai/pipecat-flows
-- Guide: https://docs.pipecat.ai/guides/features/pipecat-flows
-- API Reference: https://reference-flows.pipecat.ai/en/latest/
+- Feature guide: https://docs.pipecat.ai/guides/features/pipecat-flows
+- API reference: https://reference-flows.pipecat.ai/en/latest/
 
-## Features
+## Highlights
 
-- **Visual Flow Editor**: Drag-and-drop interface for building Pipecat flows
-- **Node Palette**: Pre-configured node types (start, end, message, LLM call, decision, etc.)
-- **Inspector Panel**: Schema-driven forms for editing node properties
-- **JSON Editor**: Monaco-based JSON editor with live validation
-- **Import/Export**: Validate and import/export flows as JSON
-- **Autosave**: Automatic localStorage saves of current flow state
-- **Undo/Redo**: Full undo/redo history with keyboard shortcuts
-- **Keyboard Shortcuts**:
-  - `Cmd/Ctrl+Z` - Undo
-  - `Cmd/Ctrl+Shift+Z` or `Cmd/Ctrl+Y` - Redo
-  - `Delete/Backspace` - Delete selected node
-  - `Cmd/Ctrl+D` - Duplicate selected node
-- **Example Flows**: Bundled example flows for quick start
-- **Validation**: Real-time schema validation with error reporting
+- **NodeConfig-first modeling** – Nodes map 1:1 to Pipecat `NodeConfig` objects (`role_messages`, `task_messages`, `functions`, actions, context strategy, etc.).
+- **Inspector-driven editing** – Schema-backed forms for messages, function schemas, decisions, actions, context strategy, and response controls.
+- **Decision routing visualized** – Function-level decisions appear as inline decision nodes and translate directly to Python conditionals.
+- **JSON + Python export** – Download the validated flow JSON or generate runnable Python scaffolding via the built-in code generator.
+- **Schema validation** – TypeBox + Ajv plus custom graph rules (unique IDs, valid references) before import/export.
+- **Local-first UX** – Autosave, undo/redo, keyboard shortcuts, dark mode, example flows, and Monaco JSON viewer.
 
-## Development
+## Getting Started
 
-1. Install dependencies
+Install dependencies:
 
 ```bash
-npm install # or pnpm/yarn
+npm install
 ```
 
-2. Run the dev server
+Run the dev server:
 
 ```bash
 npm run dev
 ```
 
-Open http://localhost:3000.
+Open http://localhost:3000 to launch the editor.
 
 ## Testing
 
-Run unit tests:
-
 ```bash
-npm test
+npm test      # Vitest (unit + component tests)
+npm run lint  # ESLint + TypeScript rules
 ```
 
-Run Playwright E2E tests:
+## Working With Flows
 
-```bash
-npm run test:e2e
-```
+- Flows are saved as JSON documents that follow `lib/schema/flow.schema.ts`. Detailed field descriptions live in [docs/SCHEMA.md](./docs/SCHEMA.md).
+- The node palette includes `initial`, `node`, and `end` templates. All nodes ultimately emit the same Pipecat `NodeConfig`, but templates give sensible defaults.
+- Routing is controlled by function metadata:
+  - `next_node_id` wires one function directly to the next node.
+  - `decision` objects attach Python snippets and conditionals that become decision nodes in the canvas and `if/elif` blocks in generated Python.
+- Decision nodes shown on the canvas are visualization helpers; they are not persisted as standalone nodes. Instead, decision metadata is stored on the originating function.
+- Edges are derived automatically from function routing. When you delete or rename nodes, the UI surfaces broken references so you can fix them before exporting.
 
-## Data Model
+### Persistence
 
-All flows are stored as JSON and must conform to the Pipecat Flows schema. See [docs/SCHEMA.md](./docs/SCHEMA.md) for the complete schema reference.
+- Every edit debounces into `localStorage`, so reloading the page restores the last working draft.
+- No server calls are made; the editor operates entirely client-side.
 
-### Key Constraints
+### Import / Export
 
-- **Node IDs**: Must be unique within a flow
-- **Edge Endpoints**: Must reference existing node IDs
-- **Required Fields**: All nodes must have `id`, `type`, `position`, and `data`
-- **Minimum Nodes**: A flow must have at least 1 node
+Toolbar actions let you:
 
-## Persistence
+- **Import JSON** – Validates against the schema plus custom graph rules, then rehydrates the canvas.
+- **Export JSON** – Serializes the current graph into Pipecat Flow JSON.
+- **Export Python** – Validates the flow, runs `lib/codegen/pythonGenerator.ts`, and downloads a Python file with `NodeConfig` factories, handler scaffolding, optional decision routing, and FlowManager wiring comments.
 
-- **Autosave**: Changes are automatically saved to `localStorage` after a 400ms debounce
-- **No Server**: All data stays in the browser; nothing is sent to a server
+See [docs/INTEGRATION.md](./docs/INTEGRATION.md) for full integration steps.
 
-## Schema Validation
+### Example Flows
 
-All imported JSON is validated against:
-1. **TypeBox Schema**: Runtime validation using Ajv
-2. **Custom Graph Rules**: Additional checks for uniqueness and connectivity
-
-Invalid flows cannot be imported and will show error toasts with details.
-
-## Example Flows
-
-Example flows are included in `lib/examples/`:
-- `minimal.json` - Basic start -> end flow
-- `food_ordering.json` - Simple food ordering conversation flow
-
-Load examples from the toolbar dropdown.
-
-## Integration with Pipecat
-
-The exported JSON from this editor is a **flow configuration** that defines the graph structure, nodes, edges, and conditions. To use it in Pipecat:
-
-1. **Export** your flow from the editor (toolbar → Export button)
-2. **Install** Pipecat Flows: `pip install pipecat pipecat-ai-flows`
-3. **Load** the JSON in Python: `FlowConfig.from_dict(json.load(f))`
-4. **Register** node handler functions for each node type
-5. **Execute** the flow using `Pipeline` and `PipelineTask`
-
-See [docs/INTEGRATION.md](./docs/INTEGRATION.md) for a complete integration guide with examples.
+Example definitions live in `lib/examples/` (e.g., `minimal.json`, `food_ordering.json`). Load them via **Load Example** in the toolbar to see end-to-end patterns.
 
 ## Tech Stack
 
-- **Next.js 14** (App Router)
-- **React 19**
+- **Next.js 16** (App Router)
+- **React 19** + **@xyflow/react** for the canvas
 - **TypeScript**
-- **Tailwind CSS v4**
-- **React Flow** - Graph canvas
-- **Monaco Editor** - JSON editing
-- **TypeBox** - Schema definition
-- **Ajv** - Runtime validation
+- **Tailwind CSS v4** + custom UI primitives
+- **Monaco Editor** for JSON inspection
+- **TypeBox + Ajv** for schema + validation
+- **Zustand** for editor state
 
 ## Contributing
 
-When adding new node types:
-1. Add the type to `lib/schema/flow.schema.ts` if it's a new core type
-2. Add a template in `lib/nodes/templates.ts`
-3. Create an inspector form component in `components/inspector/forms/` if needed
-4. Update the schema docs
+When expanding capabilities:
 
-See [docs/SCHEMA.md](./docs/SCHEMA.md) for schema details.
+1. Update `lib/schema/flow.schema.ts` and `docs/SCHEMA.md` for any schema changes.
+2. Add or tweak templates in `lib/nodes/templates.ts`.
+3. Extend inspector forms under `components/inspector/forms/` to expose new fields.
+4. Update tests (`tests/`) and docs as needed.
 
+See [docs/SCHEMA.md](./docs/SCHEMA.md) for authoritative schema details.

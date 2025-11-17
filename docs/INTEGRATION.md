@@ -1,306 +1,115 @@
 # Pipecat Integration Guide
 
-This document explains how flows exported from the visual editor are integrated into Pipecat applications.
+This document explains how to take a flow built in the visual editor and run it inside a Pipecat application.
 
-## Overview
+## Flow Lifecycle
 
-The exported JSON from the editor is a **flow configuration** that defines:
-- The graph structure (nodes and edges)
-- Node types and their data/configuration
-- Edge conditions and routing logic
-- Flow metadata
+1. **Design** – Build and validate the flow inside the editor. Nodes map directly to Pipecat `NodeConfig` objects.
+2. **Export** – Use the toolbar to export either:
+   - `flow.json` (schema-compliant Pipecat Flow JSON)
+   - `<flow_name>_flow.py` (generated Python scaffolding produced by `lib/codegen/pythonGenerator.ts`)
+3. **Implement handlers** – Fill in the TODO sections in the generated Python file (or write your own implementation if consuming JSON manually).
+4. **Run in Pipecat** – Load the generated node factories, instantiate a `FlowManager`, and call `initialize` with the initial node when your transport connects.
 
-However, **Pipecat Flows uses a programmatic API** where flows are created dynamically in Python using `NodeConfig` objects. The JSON from the editor serves as a blueprint that you translate into Python code using the `FlowManager` API.
+## Export Formats
 
-## Actual Pipecat Flows API Pattern
+### JSON
 
-Based on the [official example](https://github.com/pipecat-ai/pipecat-flows/blob/main/examples/food_ordering.py), Pipecat Flows uses:
+`flow.json` is the canonical data model used in the editor and contains:
 
-1. **`FlowManager`** - Manages flow execution and state
-2. **`NodeConfig`** - Defines nodes programmatically with:
-   - `name` - Node identifier
-   - `role_messages` - System messages defining bot role/personality
-   - `task_messages` - Instructions for the current conversation step
-   - `functions` - Available function tools (using `FlowsFunctionSchema`)
-   - `pre_actions` / `post_actions` - Actions before/after node execution
-3. **Function handlers** - Return `(FlowResult, NodeConfig | None)` tuples
-   - The result updates flow state
-   - The next `NodeConfig` determines flow progression
-4. **`flow_manager.state`** - Shared dictionary for flow state
-5. **`flow_manager.initialize(node)`** - Starts the flow
+- `meta`, `context`, `global_functions`
+- `nodes[]` with Pipecat `NodeConfig` fields (messages, functions, actions, context strategy, respond_immediately)
+- Function-level routing via `next_node_id` or `decision`
+- Visualization edges derived from the routing data
 
-## Integration Approach
+Use JSON if you want to plug the editor into a custom runtime, build your own generator, or version the declarative representation of the flow.
 
-Since Pipecat Flows uses programmatic node creation rather than static JSON loading, you have two options:
+### Generated Python
 
-### Option 1: Use JSON as a Design Blueprint
+Selecting **Export → Export Python** downloads a ready-to-run scaffold:
 
-The exported JSON serves as documentation/specification. You manually implement nodes in Python:
+- One `create_<node_id>_node()` function per node
+- `FlowsFunctionSchema` definitions (including Field metadata) and async handler stubs
+- Decision routing rendered as Python `if / elif / else` blocks
+- Optional context strategy wiring (adds `ContextStrategyConfig` imports only when needed)
+- Placeholder FlowManager setup showing where to plug in your Pipecat pipeline and transport events
+
+Every handler contains TODOs for your business logic and already returns `(FlowResult | None, NodeConfig | None)` in the proper shape.
+
+## Using the Generated Python
+
+1. **Install Pipecat Flows** (and your preferred transports/services):
+
+```bash
+pip install pipecat pipecat-ai-flows
+```
+
+2. **Save the generated file** (e.g., `food_ordering_flow.py`) somewhere importable by your bot.
+
+3. **Wire it into your Pipecat entrypoint**:
 
 ```python
-from pipecat_flows import FlowManager, NodeConfig, FlowsFunctionSchema, FlowArgs, FlowResult
+from pipecat_flows import FlowManager
+from pipecat_flows.transport import BaseTransport
 
-# Your exported JSON tells you the structure, but you implement it in Python:
+from food_ordering_flow import (
+    create_initial_node,
+    # ...any other helpers you want to reference directly
+)
 
-def create_greet_node() -> NodeConfig:
-    """Based on your 'greet' message node in the editor"""
-    return NodeConfig(
-        name="greet",
-        task_messages=[
-            {
-                "role": "system",
-                "content": "Greet the user warmly. Say: Welcome to Pipecat Pizza!"
-            }
-        ]
-    )
-
-def create_ask_node() -> NodeConfig:
-    """Based on your 'ask' llm_call node in the editor"""
-    async def process_order(args: FlowArgs, flow_manager: FlowManager) -> tuple[FlowResult, NodeConfig]:
-        # Extract data from LLM response
-        order = extract_order_from_context(flow_manager.state)
-        flow_manager.state["order"] = order
-        return FlowResult(), create_confirm_node()
-    
-    select_order_func = FlowsFunctionSchema(
-        name="select_order",
-        handler=process_order,
-        description="Record the user's order",
-        properties={
-            "items": {"type": "string", "description": "Order items"},
-        },
-        required=["items"]
-    )
-    
-    return NodeConfig(
-        name="ask",
-        task_messages=[
-            {
-                "role": "system",
-                "content": "You are a helpful pizza ordering assistant. Ask what they'd like to order."
-            }
-        ],
-        functions=[select_order_func],
-    )
-
-def create_confirm_node() -> NodeConfig:
-    """Based on your 'decision' node with edge conditions"""
-    async def complete_order(args: FlowArgs, flow_manager: FlowManager) -> tuple[None, NodeConfig]:
-        return None, create_end_node()
-    
-    async def retry_order(args: FlowArgs, flow_manager: FlowManager) -> tuple[None, NodeConfig]:
-        return None, create_ask_node()
-    
-    complete_func = FlowsFunctionSchema(
-        name="complete_order",
-        handler=complete_order,
-        description="User confirms order is correct",
-        properties={},
-        required=[],
-    )
-    
-    retry_func = FlowsFunctionSchema(
-        name="retry_order",
-        handler=retry_order,
-        description="User wants to change their order",
-        properties={},
-        required=[],
-    )
-    
-    return NodeConfig(
-        name="confirm",
-        task_messages=[
-            {
-                "role": "system",
-                "content": """Read back the order. If correct, user will use complete_order. 
-                If they want changes, they'll use retry_order."""
-            }
-        ],
-        functions=[complete_func, retry_func],
-    )
-
-def create_end_node() -> NodeConfig:
-    return NodeConfig(
-        name="end",
-        task_messages=[
-            {"role": "system", "content": "Thank the user and end the conversation."}
-        ],
-        post_actions=[{"type": "end_conversation"}],
-    )
-
-# Initialize FlowManager
 flow_manager = FlowManager(
     task=task,
     llm=llm,
     context_aggregator=context_aggregator,
     transport=transport,
+    # global_functions=[...],  # uncomment if your flow defines them
 )
 
-# Start the flow
-await flow_manager.initialize(create_greet_node())
-```
-
-### Option 2: Generate Python Code from JSON (Future Enhancement)
-
-A code generator could translate editor JSON into Python `NodeConfig` functions:
-
-```python
-# Generated from exported JSON
-def create_nodes_from_json(flow_json: dict) -> dict[str, NodeConfig]:
-    """Convert editor JSON to NodeConfig objects"""
-    nodes = {}
-    
-    for node_data in flow_json["nodes"]:
-        node_id = node_data["id"]
-        node_type = node_data["type"]
-        data = node_data.get("data", {})
-        
-        if node_type == "message":
-            nodes[node_id] = NodeConfig(
-                name=node_id,
-                task_messages=[{
-                    "role": "system",
-                    "content": data.get("text", "")
-                }]
-            )
-        elif node_type == "llm_call":
-            # Create function handler based on node data
-            # ... implementation
-            pass
-        # ... handle other node types
-    
-    return nodes
-```
-
-**Note**: This would require implementing a JSON → Python code generator.
-
-## Key Mappings: Editor JSON → Python API
-
-| Editor Concept | Python Implementation |
-|----------------|----------------------|
-| Node `id` | `NodeConfig.name` |
-| Node `type` | Determines `NodeConfig` structure |
-| Node `data.text` (message) | `task_messages[0].content` |
-| Node `data.model/prompt/system` (llm_call) | Configured in LLM service + `task_messages` |
-| Node `data.expression` (decision) | Logic in function handlers |
-| Edge `condition` | Routing logic in function return values |
-| Flow `context` | `flow_manager.state` dictionary |
-| Edge routing | Function handlers return `(result, next_node)` |
-
-## Complete Example: Food Ordering Flow
-
-Based on the [official example](https://github.com/pipecat-ai/pipecat-flows/blob/main/examples/food_ordering.py):
-
-```python
-from pipecat_flows import (
-    FlowManager,
-    NodeConfig,
-    FlowsFunctionSchema,
-    FlowArgs,
-    FlowResult,
-)
-from pipecat.pipeline.pipeline import Pipeline
-from pipecat.pipeline.task import PipelineTask
-
-# Set up your Pipecat pipeline (STT, LLM, TTS, transport)
-pipeline = Pipeline([...])
-task = PipelineTask(pipeline)
-
-# Create nodes programmatically
-def create_initial_node() -> NodeConfig:
-    async def choose_pizza(args: FlowArgs, flow_manager: FlowManager) -> tuple[None, NodeConfig]:
-        return None, create_pizza_node()
-    
-    async def choose_sushi(args: FlowArgs, flow_manager: FlowManager) -> tuple[None, NodeConfig]:
-        return None, create_sushi_node()
-    
-    choose_pizza_func = FlowsFunctionSchema(
-        name="choose_pizza",
-        handler=choose_pizza,
-        description="User wants to order pizza",
-        properties={},
-        required=[],
-    )
-    
-    return NodeConfig(
-        name="initial",
-        role_messages=[{
-            "role": "system",
-            "content": "You are an order-taking assistant..."
-        }],
-        task_messages=[{
-            "role": "system",
-            "content": "Ask if they want pizza or sushi..."
-        }],
-        functions=[choose_pizza_func, choose_sushi_func],
-    )
-
-def create_pizza_node() -> NodeConfig:
-    async def select_pizza(args: FlowArgs, flow_manager: FlowManager):
-        size = args["size"]
-        pizza_type = args["type"]
-        
-        # Store in flow state
-        flow_manager.state["order"] = {
-            "type": "pizza",
-            "size": size,
-            "pizza_type": pizza_type,
-        }
-        
-        return FlowResult(), create_confirmation_node()
-    
-    select_func = FlowsFunctionSchema(
-        name="select_pizza_order",
-        handler=select_pizza,
-        description="Record pizza order",
-        properties={
-            "size": {"type": "string", "enum": ["small", "medium", "large"]},
-            "type": {"type": "string", "enum": ["pepperoni", "cheese", "supreme"]},
-        },
-        required=["size", "type"],
-    )
-    
-    return NodeConfig(
-        name="choose_pizza",
-        task_messages=[{
-            "role": "system",
-            "content": "Handle pizza order..."
-        }],
-        functions=[select_func],
-    )
-
-# Initialize FlowManager
-flow_manager = FlowManager(
-    task=task,
-    llm=llm,
-    context_aggregator=context_aggregator,
-    transport=transport,
-)
-
-# Start the flow
 @transport.event_handler("on_client_connected")
-async def on_client_connected(transport, client):
+async def on_client_connected(transport: BaseTransport, client):
     await flow_manager.initialize(create_initial_node())
 ```
 
-## Differences from Editor JSON
+4. **Implement the handlers** generated in the file. Each handler already receives `(args, flow_manager)` so you can:
+   - Read user input or prior outputs from `args`
+   - Store intermediate data in `flow_manager.state`
+   - Decide what node to visit next (or rely on decisions/`next_node_id`)
 
-The editor's JSON format is **declarative** (describes what), while Pipecat Flows Python API is **programmatic** (describes how):
+### Decision Handling
 
-1. **Dynamic Node Creation**: Nodes are created as Python functions, not loaded from static JSON
-2. **Function-Based Routing**: Flow progression happens via function return values, not edge conditions
-3. **State Management**: Uses `flow_manager.state` dict, not a separate context object
-4. **LLM Integration**: LLM calls are implicit in `task_messages`, not explicit `llm_call` nodes
+If a function in the editor contains a decision:
 
-## Recommendations
+- The generated handler includes the `action` block (your expression, evaluated server-side).
+- Conditions become `if/elif` checks that route to `create_<node_id>_node()` functions.
+- The editor also stores optional `decision_node_position` so re-importing Python-exported JSON maintains the layout of helper decision nodes in the UI.
 
-1. **Use Editor for Design**: Design your flow visually in the editor
-2. **Manual Implementation**: Translate the design to Python `NodeConfig` code
-3. **JSON as Reference**: Keep exported JSON as documentation/specification
-4. **Validate in Editor**: Use editor validation to catch structural issues before coding
+## Using JSON Directly
+
+If you prefer to consume the JSON yourself:
+
+| JSON Field                               | Pipecat Usage                                        |
+| ---------------------------------------- | ---------------------------------------------------- |
+| `node.id`                                | `NodeConfig.name`                                    |
+| `node.data.role_messages`                | `NodeConfig.role_messages`                           |
+| `node.data.task_messages`                | `NodeConfig.task_messages`                           |
+| `node.data.functions[]`                  | `FlowsFunctionSchema` definitions                    |
+| `node.data.functions[].next_node_id`     | Return value `(…, create_<id>_node())`               |
+| `node.data.functions[].decision`         | Custom logic that maps to handler code               |
+| `node.data.pre_actions` / `post_actions` | Passed directly into `NodeConfig`                    |
+| `node.data.context_strategy`             | Adds `ContextStrategyConfig`                         |
+| `global_functions`                       | Optional functions registered on every node          |
+| `edges`                                  | Visualization only (derived from the routing fields) |
+
+The TypeBox schema is documented in [docs/SCHEMA.md](./SCHEMA.md).
+
+## Validation & Tooling
+
+- JSON exports are validated via Ajv and custom graph checks before they leave the editor.
+- Python exports run the same validation first; generation is blocked until the flow passes.
+- Re-importing either JSON or edited Python (converted back to JSON) keeps decision positions, function metadata, and context strategy aligned with the UI.
 
 ## References
 
-- [Official Food Ordering Example](https://github.com/pipecat-ai/pipecat-flows/blob/main/examples/food_ordering.py)
 - [Pipecat Flows API Reference](https://reference-flows.pipecat.ai/en/latest/)
-- [Pipecat Flows Guide](https://docs.pipecat.ai/guides/features/pipecat-flows)
+- [Official Food Ordering Example](https://github.com/pipecat-ai/pipecat-flows/blob/main/examples/food_ordering.py)
+- [Feature Guide](https://docs.pipecat.ai/guides/features/pipecat-flows)

@@ -1,144 +1,181 @@
 # Pipecat Flows Schema
 
-This document describes the JSON schema and data model for Pipecat Flows.
+This document mirrors the authoritative TypeBox schema located at `lib/schema/flow.schema.ts`. All flows imported/exported by the editor must follow this structure.
 
-## Overview
+> Schema ID: `https://flows.pipecat.ai/schema/flow.json`
 
-The flow schema is defined using TypeBox (`lib/schema/flow.schema.ts`) and validated at runtime with Ajv. All flows must conform to this schema to be imported into the editor.
+## Top-Level Shape (`FlowSchema`)
 
-## Schema Reference
-
-### Flow Schema (`FlowSchema`)
-
-A flow document consists of:
-
-```typescript
-{
-  $schema?: string;          // Optional schema URI
-  $id?: string;               // Optional schema ID
-  meta: FlowMeta;            // Flow metadata
-  context?: Record<string, any>; // Optional context variables
-  nodes: FlowNode[];         // Array of nodes (min 1)
-  edges: FlowEdge[];         // Array of edges
-}
+```ts
+type FlowSchema = {
+  $schema?: string;
+  $id?: string;
+  meta: FlowMeta;
+  context?: Record<string, unknown>;
+  global_functions?: GlobalFunction[];
+  nodes: FlowNode[]; // min 1
+  edges: FlowEdge[]; // visualization only (derived from routing)
+};
 ```
 
-### Flow Metadata (`FlowMeta`)
+- `meta` – Display information (`name`, optional `version`, optional `description`)
+- `context` – Arbitrary metadata carried with the flow (not interpreted by the editor)
+- `global_functions` – Functions registered on every node in Pipecat
+- `nodes` – Canvas nodes that map 1:1 to Pipecat `NodeConfig`
+- `edges` – Computed from function routing so the canvas can visualize connections. Routing logic lives on functions (`next_node_id` / `decision`), not on edges.
 
-```typescript
-{
-  name: string;              // Flow name (required, min length 1)
-  version?: string;          // Version string (default: "0.1.0")
-  description?: string;      // Optional description
-}
+## Nodes
+
+```ts
+type FlowNode = {
+  id: string;
+  type: "initial" | "node" | "end";
+  position: { x: number; y: number };
+  data: CommonNodeData & Record<string, unknown>;
+};
 ```
 
-### Flow Node (`FlowNode`)
+- `initial` – Entry point: must contain `role_messages` (Pipecat expects an initial persona)
+- `node` – Standard conversational step
+- `end` – Usually contains a `post_actions` item with `{ type: "end_conversation" }`
 
-```typescript
-{
-  id: string;                // Unique node ID (required, min length 1)
-  type: NodeType;            // Node type (see below)
-  position: { x: number, y: number }; // Canvas position
-  data: Record<string, any>; // Node-specific data
-}
+### Common Node Data
+
+```ts
+type CommonNodeData = {
+  label?: string;
+  role_messages?: Message[];
+  task_messages?: Message[];
+  functions?: FlowFunction[];
+  pre_actions?: Action[];
+  post_actions?: Action[];
+  context_strategy?: ContextStrategyConfig;
+  respond_immediately?: boolean; // defaults to true
+};
 ```
 
-### Node Types
+- `label` – Display name used in the canvas/palette
+- `role_messages` – Pipecat role messages (`role` = `system` | `user` | `assistant`, `content` = string)
+- `task_messages` – Step-specific instructions
+- `functions` – Available `FlowsFunctionSchema` entries for this node
+- `pre_actions` / `post_actions` – Pipecat actions executed before/after the node
+- `context_strategy` – Controls Pipecat context accumulation (`APPEND`, `RESET`, `RESET_WITH_SUMMARY`)
+- `respond_immediately` – Set to `false` if the node should wait before responding
 
-Supported node types:
-- `start` - Flow entry point
-- `end` - Flow exit point
-- `message` - Send a message
-- `llm_call` - LLM invocation
-- `tool_call` - Tool/function call
-- `decision` - Conditional branch
-- `merge` - Merge multiple paths
-- `switch` - Multi-case switch
-- `subflow` - Nested subflow
-- `event` - Event handler
-- `loop` - Loop construct
-- `function` - Custom function
-- `wait` - Wait/delay
-- `http_call` - HTTP request
-- `custom` - Custom node type
+### Functions
 
-### Flow Edge (`FlowEdge`)
-
-```typescript
-{
-  id: string;                // Unique edge ID (required, min length 1)
-  source: string;            // Source node ID (required, min length 1)
-  target: string;            // Target node ID (required, min length 1)
-  label?: string;            // Optional edge label
-  priority?: number;         // Optional priority (integer, >= 0)
-  condition?: EdgeCondition; // Optional edge condition
-}
+```ts
+type FlowFunction = {
+  name: string;
+  description: string;
+  properties?: Record<string, FunctionProperty>;
+  required?: string[];
+  next_node_id?: string;
+  decision?: Decision;
+};
 ```
 
-### Edge Condition (`EdgeCondition`)
+`properties` and `required` follow JSON Schema semantics and become the arguments that Pipecat hands to the function handler.
 
-```typescript
-{
-  expression?: string;       // Condition expression
-  language?: 'python' | 'jinja' | 'dsl'; // Expression language
-}
+#### FunctionProperty
+
+```ts
+type FunctionProperty = {
+  type: string; // e.g., "string", "number", "boolean", "integer"
+  description?: string;
+  enum?: Array<string | number>;
+  minimum?: number;
+  maximum?: number;
+  pattern?: string;
+};
 ```
 
-## Validation Rules
+### Decisions
 
-### Schema Validation
+Functions optionally include a `decision` block to express conditional routing without creating extra nodes.
 
-The schema enforces:
-- Required fields are present
-- String fields meet minimum length requirements
-- Number fields are within valid ranges
-- Arrays meet minimum item requirements
+```ts
+type Decision = {
+  action: string; // Python code snippet (must set `result`)
+  conditions: DecisionCondition[];
+  default_next_node_id: string;
+  decision_node_position?: { x: number; y: number }; // for canvas layout fidelity
+};
 
-### Custom Graph Rules
-
-Additional validations (see `lib/validation/validator.ts`):
-1. **Unique Node IDs**: All node IDs must be unique within the flow
-2. **Edge Endpoint Existence**: All edge `source` and `target` IDs must reference existing nodes
-
-## Node-Specific Data
-
-Node types may have specific data fields:
-
-### Message Node
-```typescript
-{
-  text: string; // Message content
-}
+type DecisionCondition = {
+  operator: "<" | "<=" | "==" | ">=" | ">" | "!=" | "not" | "in" | "not in";
+  value: string;
+  next_node_id: string;
+};
 ```
 
-### LLM Call Node
-```typescript
-{
-  model: string;      // Model identifier (e.g., "gpt-4o")
-  system?: string;   // System prompt
-  prompt?: string;   // User prompt
-  temperature?: number; // Temperature (0-2)
-}
+- During export, `action` is inserted verbatim into the generated Python handler.
+- Conditions convert into `if/elif` statements.
+- The optional `decision_node_position` ensures that re-importing JSON preserves the helper decision node position shown in the UI.
+
+### Actions
+
+```ts
+type Action = {
+  type: string; // e.g., "function", "end_conversation", "tts_say"
+  handler?: string; // reference to the Python handler for "function"
+  text?: string; // spoken text for "tts_say"
+};
 ```
 
-### Decision Node
-```typescript
-{
-  expression: string;           // Decision expression
-  language?: 'dsl' | 'python' | 'jinja'; // Expression language
-}
+### Context Strategy
+
+```ts
+type ContextStrategyConfig = {
+  strategy: "APPEND" | "RESET" | "RESET_WITH_SUMMARY";
+  summary_prompt?: string; // only for RESET_WITH_SUMMARY
+};
 ```
 
-Other node types may have additional fields as needed. The schema allows `data` to be flexible (`Record<string, any>`) to accommodate node-specific requirements.
+## Global Functions
+
+Global functions share the same structure as node functions minus routing fields:
+
+```ts
+type GlobalFunction = {
+  name: string;
+  description: string;
+  properties?: Record<string, FunctionProperty>;
+  required?: string[];
+};
+```
+
+They become `FlowsFunctionSchema` instances registered on the `FlowManager` itself (available to every node).
+
+## Edges
+
+```ts
+type FlowEdge = {
+  id: string;
+  source: string;
+  target: string;
+  label?: string;
+  priority?: number; // >= 0
+  condition?: {
+    expression?: string;
+    language?: "python" | "jinja" | "dsl";
+  };
+};
+```
+
+Edges are generated from `functions[].next_node_id` and `functions[].decision` metadata when exporting React Flow state. They ensure the canvas keeps meaningful lines between nodes but **do not control routing**—the routing data always lives in the function definitions.
+
+## Validation
+
+Validation happens in two layers (`lib/validation/validator.ts`):
+
+1. **Ajv / TypeBox schema** – Enforces structural correctness.
+2. **Custom graph checks** – Guarantees:
+   - Node IDs are unique.
+   - All edge endpoints point to existing nodes.
+
+The export flow blocks downloads until both layers pass. Errors are surfaced in the UI via toasts and console logs.
 
 ## Example
 
-See `lib/examples/` for complete example flows.
-
-## Schema Versioning
-
-The schema includes `$id` and `$schema` fields for versioning:
-- Schema ID: `https://flows.pipecat.ai/schema/flow.json`
-- Use the `meta.version` field to track flow document versions
-
+See `lib/examples/` for complete JSON samples (`minimal.json`, `food_ordering.json`). They are guaranteed to match the schema and serve as good references for new flows.
