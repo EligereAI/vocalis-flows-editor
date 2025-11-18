@@ -2,6 +2,65 @@
 
 import { BaseEdge, EdgeProps, useNodes } from "@xyflow/react";
 
+import type { FlowFunctionJson } from "@/lib/schema/flow.schema";
+import type { FlowNodeData } from "@/lib/types/flowTypes";
+
+/**
+ * Builds the geometry for a self-loop edge
+ * @param startX - The x-coordinate of the start point
+ * @param startY - The y-coordinate of the start point
+ * @param endX - The x-coordinate of the end point
+ * @param endY - The y-coordinate of the end point
+ * @param baseHorizontalSpacing - The base horizontal spacing
+ * @param verticalSpacing - The vertical spacing
+ * @param cornerRadius - The corner radius
+ * @param horizontalOffset - The horizontal offset
+ * @returns The geometry for the self-loop edge
+ */
+function buildSelfLoopGeometry({
+  startX,
+  startY,
+  endX,
+  endY,
+  baseHorizontalSpacing,
+  verticalSpacing,
+  cornerRadius,
+  horizontalOffset,
+}: {
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+  baseHorizontalSpacing: number;
+  verticalSpacing: number;
+  cornerRadius: number;
+  horizontalOffset: number;
+}) {
+  const totalHorizontalSpacing = baseHorizontalSpacing + horizontalOffset;
+  const bottomY = startY + verticalSpacing;
+  const topY = endY - verticalSpacing;
+  const leftX = startX - totalHorizontalSpacing;
+
+  const path = [
+    `M ${startX} ${startY}`,
+    `L ${startX} ${bottomY - cornerRadius}`,
+    `C ${startX} ${bottomY - cornerRadius * 0.5}, ${startX - cornerRadius * 0.5} ${bottomY}, ${startX - cornerRadius} ${bottomY}`,
+    `L ${leftX + cornerRadius} ${bottomY}`,
+    `C ${leftX + cornerRadius * 0.5} ${bottomY}, ${leftX} ${bottomY - cornerRadius * 0.5}, ${leftX} ${bottomY - cornerRadius}`,
+    `L ${leftX} ${topY + cornerRadius}`,
+    `C ${leftX} ${topY + cornerRadius * 0.5}, ${leftX + cornerRadius * 0.5} ${topY}, ${leftX + cornerRadius} ${topY}`,
+    `L ${endX - cornerRadius} ${topY}`,
+    `C ${endX - cornerRadius * 0.5} ${topY}, ${endX} ${topY + cornerRadius * 0.5}, ${endX} ${topY + cornerRadius}`,
+    `L ${endX} ${endY}`,
+  ].join(" ");
+
+  return {
+    path,
+    labelX: leftX,
+    labelY: (bottomY + topY) / 2,
+  };
+}
+
 export default function SelfLoopEdge({
   id,
   sourceX,
@@ -16,6 +75,9 @@ export default function SelfLoopEdge({
   // Get the source node to determine its actual dimensions for label spacing
   const nodes = useNodes();
   const sourceNode = nodes.find((n) => n.id === source);
+  const sourceNodeData = sourceNode?.data as FlowNodeData | undefined;
+  const sourceFunctions = (sourceNodeData?.functions ?? []) as FlowFunctionJson[];
+  const selfLoopFunctions = sourceFunctions.filter((func) => func.next_node_id === sourceNode?.id);
   const nodeWidth = sourceNode?.width ?? 150;
 
   // For self-loops, source and target are the same node
@@ -25,54 +87,47 @@ export default function SelfLoopEdge({
   const endX = targetX;
   const endY = targetY;
 
-  // Calculate spacing for the loop
-  const verticalSpacing = 10; // Distance down from bottom handle and up from top handle
-
-  // Calculate horizontal spacing based on label length
-  // Estimate ~6px per character + padding, with minimum spacing
   const labelText = label ? String(label) : "";
-  const labelWidth = labelText.length * 6 + 4; // ~6px per char + padding
-  const minSpacing = nodeWidth / 2 + 10; // Minimum space (node half-width + small padding)
-  const horizontalSpacing = Math.max(minSpacing, labelWidth); // Use larger of min or label-based spacing
+  const measureLabelWidth = (text: string) => text.length * 6 + 4;
+  const labelWidth = measureLabelWidth(labelText);
 
-  // Calculate key points for the simple path:
-  // 1. From bottom handle, move down
-  // 2. Then straight left until there's enough space for centered text
-  // 3. Then up (with label here)
-  // 4. Then back right
-  // 5. Finally slightly down towards top handle
+  // Determine loop index for multiple self-loops (avoid overlap)
+  const loopIndex = selfLoopFunctions.findIndex((func) => func.name === labelText);
+  const normalizedLoopIndex = loopIndex >= 0 ? loopIndex : 0;
 
-  const bottomY = startY + verticalSpacing;
-  const leftX = startX - horizontalSpacing;
-  const topY = endY - verticalSpacing;
+  // Calculate spacing for the loop
+  const baseVerticalSpacing = 10;
+  const verticalSpacing = baseVerticalSpacing + normalizedLoopIndex * 2;
 
-  // Corner radius for rounded corners
-  const cornerRadius = 25;
+  const minSpacing = nodeWidth / 2 + 10;
+  const labelPadding = 4;
+  const cumulativeLabelWidth =
+    normalizedLoopIndex > 0
+      ? selfLoopFunctions.slice(0, normalizedLoopIndex).reduce((acc, func) => {
+          const text = func.name ?? "";
+          const width = measureLabelWidth(text);
+          return acc + width + labelPadding;
+        }, 0)
+      : 0;
+  const baseSpacing = minSpacing + labelWidth / 2;
+  const horizontalOffset = cumulativeLabelWidth;
 
-  // Create a path with rounded corners using cubic bezier curves for smooth corners
-  // C command: C x1 y1, x2 y2, x y (control points and end point)
-  // Note: In SVG, Y increases downward
-  const loopPath = [
-    `M ${startX} ${startY}`, // Start at bottom handle
-    `L ${startX} ${bottomY - cornerRadius}`, // Move down (before corner)
-    // Bottom corner: curve from down to left
-    // Control points create a smooth 90-degree turn
-    `C ${startX} ${bottomY - cornerRadius * 0.5}, ${startX - cornerRadius * 0.5} ${bottomY}, ${startX - cornerRadius} ${bottomY}`,
-    `L ${leftX + cornerRadius} ${bottomY}`, // Straight left (before corner)
-    // Bottom-left corner: curve from left to up
-    `C ${leftX + cornerRadius * 0.5} ${bottomY}, ${leftX} ${bottomY - cornerRadius * 0.5}, ${leftX} ${bottomY - cornerRadius}`,
-    `L ${leftX} ${topY + cornerRadius}`, // Up (before corner, label will be here)
-    // Top-left corner: curve from up to right
-    `C ${leftX} ${topY + cornerRadius * 0.5}, ${leftX + cornerRadius * 0.5} ${topY}, ${leftX + cornerRadius} ${topY}`,
-    `L ${endX - cornerRadius} ${topY}`, // Back right (before corner)
-    // Top-right corner: curve from right to down
-    `C ${endX - cornerRadius * 0.5} ${topY}, ${endX} ${topY + cornerRadius * 0.5}, ${endX} ${topY + cornerRadius}`,
-    `L ${endX} ${endY}`, // Slightly down to top handle
-  ].join(" ");
+  const cornerRadius = 24;
 
-  // Label position: on the left side, vertically centered
-  const labelX = leftX;
-  const labelY = (bottomY + topY) / 2;
+  const {
+    path: loopPath,
+    labelX,
+    labelY,
+  } = buildSelfLoopGeometry({
+    startX,
+    startY,
+    endX,
+    endY,
+    baseHorizontalSpacing: baseSpacing,
+    verticalSpacing,
+    cornerRadius,
+    horizontalOffset,
+  });
 
   return (
     <>
