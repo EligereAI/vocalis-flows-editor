@@ -58,6 +58,10 @@ export const FunctionItem = React.forwardRef<HTMLDivElement, FunctionItemProps>(
     const functionDescriptionId = useId();
     const nextNodeId = useId();
 
+    useEffect(() => {
+      setFunctionName(func.name);
+    }, [func.name]);
+
     const properties = useMemo(() => func.properties ?? {}, [func.properties]);
     const required = func.required ?? [];
     const propertyEntries = Object.entries(properties);
