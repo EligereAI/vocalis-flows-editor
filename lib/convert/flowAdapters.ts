@@ -135,11 +135,14 @@ export function flowJsonToReactFlow(flow: FlowJson): { nodes: Node[]; edges: Edg
         } as Edge);
       } else if (func.next_node_id) {
         // Simple next_node_id edge
+        // Use selfloop type if source === target
+        const isSelfLoop = node.id === func.next_node_id;
         edges.push({
           id: `func-${node.id}-${func.name}-${func.next_node_id}`,
           source: node.id,
           target: func.next_node_id!,
           label: func.name,
+          type: isSelfLoop ? "selfloop" : "default",
         } as Edge);
       }
     });

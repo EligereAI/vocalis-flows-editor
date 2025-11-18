@@ -15,6 +15,7 @@ import {
 import { useTheme } from "next-themes";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
+import SelfLoopEdge from "@/components/edges/SelfLoopEdge";
 import Toolbar from "@/components/header/Toolbar";
 import InspectorPanel from "@/components/inspector/InspectorPanel";
 import CodePanel from "@/components/json/CodePanel";
@@ -168,6 +169,14 @@ export default function EditorShell() {
       node: BaseNode,
       end: BaseNode,
       decision: DecisionNode,
+    }),
+    []
+  );
+
+  // Memoize edgeTypes for custom edge rendering
+  const edgeTypes = useMemo(
+    () => ({
+      selfloop: SelfLoopEdge,
     }),
     []
   );
@@ -326,6 +335,7 @@ export default function EditorShell() {
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={(params) => {
