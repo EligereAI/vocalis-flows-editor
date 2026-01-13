@@ -1,7 +1,11 @@
 "use client";
 
 import { Trash2 } from "lucide-react";
-import { useId } from "react";
+import { useEffect, useId, useMemo, useRef } from "react";
+import type { Editor } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import { EditorContent, useEditor } from "@tiptap/react";
+import { TextStyle } from "@tiptap/extension-text-style";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -11,9 +15,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { MessageJson } from "@/lib/schema/flow.schema";
+import {
+  parseContentWithMentions,
+  convertToMarkdown,
+  looksLikeMarkdown,
+} from "@/lib/utils/markdown-utils";
+import { buildMentionExtension } from "@/lib/utils/tiptap-mention";
+import { sampleVariables, sampleDefaultVariables, sampleFunctions } from "@/lib/data/mentionData";
 
 interface MessageItemProps {
   message: MessageJson;
@@ -25,6 +35,130 @@ interface MessageItemProps {
 export function MessageItem({ message, index, onUpdate, onRemove }: MessageItemProps) {
   const messageRoleId = useId();
   const messageContentId = useId();
+  const editorRef = useRef<Editor | null>(null);
+
+  // Normalize variables for mentions
+  const normalizedVariables = useMemo(
+    () =>
+      sampleVariables.map((v) => ({
+        id: v.id,
+        label: v.name ?? v.id,
+        name: v.name ?? v.id,
+        description: v.description ?? "",
+        isMutable: v.isMutable,
+      })),
+    []
+  );
+
+  const mutableVariables = useMemo(
+    () => normalizedVariables.filter((v) => v.isMutable),
+    [normalizedVariables]
+  );
+
+  const mentionExtensions = buildMentionExtension(
+    () => normalizedVariables,
+    () => mutableVariables,
+    () => sampleFunctions,
+    () => sampleDefaultVariables
+  );
+
+  const editor = useEditor({
+    immediatelyRender: false,
+    onCreate: ({ editor }) => {
+      editorRef.current = editor;
+    },
+    editable: true,
+    extensions: [
+      StarterKit.configure({
+        heading: {
+          levels: [1, 2, 3],
+          HTMLAttributes: { class: "font-bold text-gray-900 dark:text-gray-100" },
+        },
+        bulletList: {
+          keepMarks: true,
+          keepAttributes: true,
+          HTMLAttributes: { class: "list-disc" },
+        },
+        orderedList: {
+          keepMarks: true,
+          keepAttributes: true,
+          HTMLAttributes: { class: "list-decimal" },
+        },
+        listItem: {
+          HTMLAttributes: { class: "ml-6 relative" },
+        },
+        code: {
+          HTMLAttributes: {
+            class: "bg-gray-200 dark:bg-gray-700 px-1 py-0.5 rounded text-sm font-mono",
+          },
+        },
+        codeBlock: {
+          HTMLAttributes: {
+            class: "bg-gray-200 dark:bg-gray-700 p-3 rounded font-mono text-sm my-4",
+          },
+        },
+        bold: { HTMLAttributes: { class: "font-bold" } },
+        italic: { HTMLAttributes: { class: "italic" } },
+      }),
+      ...mentionExtensions,
+      TextStyle,
+    ],
+    content: parseContentWithMentions(
+      message.content ?? "",
+      normalizedVariables,
+      sampleFunctions,
+      sampleDefaultVariables
+    ),
+    editorProps: {
+      handlePaste: (_view, event) => {
+        const text = event.clipboardData?.getData("text/plain") ?? "";
+        if (text && looksLikeMarkdown(text)) {
+          event.preventDefault();
+          const htmlFromMarkdown = parseContentWithMentions(
+            text,
+            normalizedVariables,
+            sampleFunctions,
+            sampleDefaultVariables
+          );
+          editorRef.current?.chain().focus().insertContent(htmlFromMarkdown).run();
+          return true;
+        }
+        return false;
+      },
+      attributes: {
+        class:
+          "ProseMirror prose prose-sm focus:outline-none min-h-20 text-xs " +
+          // Nested list styling
+          "[&_ul]:list-disc [&_ol]:list-decimal " +
+          "[&_ul_ul]:list-[circle] [&_ul_ul_ul]:list-[square] " +
+          "[&_ol_ol]:list-[lower-alpha] [&_ol_ol_ol]:list-[lower-roman] " +
+          "[&_li]:ml-0 [&_ul]:pl-6 [&_ol]:pl-6 " +
+          "[&_li_p]:mb-0 [&_li]:mb-1",
+      },
+    },
+    onUpdate: ({ editor }) => {
+      const rawHTML = editor.getHTML();
+      const markdownContent = convertToMarkdown(rawHTML);
+      onUpdate({ content: markdownContent });
+    },
+  });
+
+  // Update editor content when message.content changes externally
+  useEffect(() => {
+    if (!editor) return;
+    const currentContent = editor.getHTML();
+    const expectedContent = parseContentWithMentions(
+      message.content ?? "",
+      normalizedVariables,
+      sampleFunctions,
+      sampleDefaultVariables
+    );
+    if (currentContent !== expectedContent) {
+      editor.commands.setContent(expectedContent);
+    }
+  }, [message.content, editor, normalizedVariables]);
+
+  if (!editor) return null;
 
   return (
     <div className="space-y-2 rounded border p-3">
@@ -62,13 +196,15 @@ export function MessageItem({ message, index, onUpdate, onRemove }: MessageItemP
         <label htmlFor={messageContentId} className="sr-only">
           Message content
         </label>
-        <Textarea
+        <div
           id={messageContentId}
-          className="min-h-20 text-xs"
-          value={message.content}
-          onChange={(e) => onUpdate({ content: e.target.value })}
-          placeholder="Message content"
-        />
+          className="rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 min-h-20 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500"
+        >
+          <EditorContent editor={editor} className="prose prose-sm max-w-none dark:prose-invert" />
+        </div>
+        <div className="text-[10px] opacity-60">
+          Use @ for variables, $ for mutable variables, # for global variables, ! for functions
+        </div>
       </div>
     </div>
   );

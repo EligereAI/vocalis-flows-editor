@@ -1,6 +1,6 @@
 "use client";
 
-import { IconBook, IconBrandGithub, IconDots, IconHome } from "@tabler/icons-react";
+import { IconBook, IconBrandGithub, IconHome } from "@tabler/icons-react";
 import {
   ChevronRight,
   Download,
@@ -12,10 +12,10 @@ import {
   Upload,
 } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useRef } from "react";
 
 import PipecatLogo from "@/components/icons/PipecatLogo";
-import { ThemeSwitch } from "@/components/ThemeSwitch";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -29,11 +29,11 @@ import { showToast } from "@/components/ui/Toast";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { generatePythonCode } from "@/lib/codegen/pythonGenerator";
 import { flowJsonToReactFlow, reactFlowToFlowJson } from "@/lib/convert/flowAdapters";
-import { EXAMPLES } from "@/lib/examples";
-import { FlowJson } from "@/lib/schema/flow.schema";
 import { useEditorStore } from "@/lib/store/editorStore";
 import type { FlowEdge, FlowNode } from "@/lib/types/flowTypes";
 import { customGraphChecks, validateFlowJson } from "@/lib/validation/validator";
+
+const FLOWS_PROMPT_URL: string | undefined = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 type Props = {
   nodes: FlowNode[];
@@ -63,17 +63,96 @@ export default function Toolbar({
   const showNodesPanel = useEditorStore((state) => state.showNodesPanel);
   const setShowNodesPanel = useEditorStore((state) => state.setShowNodesPanel);
 
-  function onExport() {
+  const pathname: string = usePathname();
+  const pathSegments: string[] = pathname.split("/").filter((segment) => segment.length > 0);
+
+  let agentIdFromUrl: string = "";
+  let versionNumberFromUrl: string = "1";
+
+  const editorIndex: number = pathSegments.indexOf("editor");
+  if (editorIndex !== -1 && pathSegments.length > editorIndex + 2) {
+    agentIdFromUrl = pathSegments[editorIndex + 1] ?? "";
+    versionNumberFromUrl = pathSegments[editorIndex + 2] ?? "1";
+  }
+
+  async function onSaveTemplate(): Promise<void> {
+    if (!FLOWS_PROMPT_URL) {
+      console.error("Environment variable NEXT_PUBLIC_BACKEND_URL is not set.");
+      showToast("Configuration error: flows endpoint is not configured", "error");
+      return;
+    }
+
     const json = reactFlowToFlowJson(nodes, edges);
+    const validationResult = validateFlowJson(json);
+    if (!validationResult.valid) {
+      showToast("Flow must be valid before saving template", "error");
+      return;
+    }
+    const custom = customGraphChecks(json);
+    if (custom.length) {
+      showToast("Custom validation failed. See console for details.", "error");
+      console.error("Custom validation errors:", custom);
+      return;
+    }
+
+    try {
+      const response = await fetch(FLOWS_PROMPT_URL + "/editor/api/v1/agent/editor/save-flows-prompt", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          agentId: agentIdFromUrl,
+          versionNumber: versionNumberFromUrl,
+          flowsPrompt: {
+            [json.meta?.name ?? "flow1"]: json,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        showToast("Failed to save template", "error");
+        console.error("Failed to save template:", await response.text());
+        return;
+      }
+
+      showToast("Template saved successfully", "success");
+    } catch (error) {
+      console.error("Error saving template:", error);
+      showToast("Error saving template", "error");
+    }
+  }
+
+  function onExport(): void {
+    const json = reactFlowToFlowJson(nodes, edges);
+    const defaultFileName: string =
+      json.meta?.name !== undefined && json.meta.name.trim().length > 0
+        ? `${json.meta.name.toLowerCase().replace(/\s+/g, "_")}.json`
+        : "flow.json";
+
+    const inputName: string | null = window.prompt(
+      "Enter a file name for the exported flow:",
+      defaultFileName
+    );
+
+    if (inputName === null || inputName.trim().length === 0) {
+      showToast("Export cancelled", "info");
+      return;
+    }
+
+    const normalizedFileName: string = inputName.toLowerCase().endsWith(".json")
+      ? inputName
+      : `${inputName}.json`;
+
     const blob = new Blob([JSON.stringify(json, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "flow.json";
+    a.download = normalizedFileName;
     a.click();
     URL.revokeObjectURL(a.href);
   }
 
-  function onExportPython() {
+  function onExportPython(): void {
     const json = reactFlowToFlowJson(nodes, edges);
     const r = validateFlowJson(json);
     if (!r.valid) {
@@ -82,10 +161,30 @@ export default function Toolbar({
     }
     try {
       const pythonCode = generatePythonCode(json);
+
+      const baseName: string =
+        json.meta?.name !== undefined && json.meta.name.trim().length > 0
+          ? `${json.meta.name.toLowerCase().replace(/\s+/g, "_")}_flow.py`
+          : "flow_flow.py";
+
+      const inputName: string | null = window.prompt(
+        "Enter a file name for the exported Python flow:",
+        baseName
+      );
+
+      if (inputName === null || inputName.trim().length === 0) {
+        showToast("Python export cancelled", "info");
+        return;
+      }
+
+      const normalizedFileName: string = inputName.toLowerCase().endsWith(".py")
+        ? inputName
+        : `${inputName}.py`;
+
       const blob = new Blob([pythonCode], { type: "text/x-python" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = `${json.meta.name.toLowerCase().replace(/\s+/g, "_")}_flow.py`;
+      a.download = normalizedFileName;
       a.click();
       URL.revokeObjectURL(a.href);
       showToast("Python code exported successfully", "success");
@@ -278,78 +377,22 @@ export default function Toolbar({
               <Download className="mr-2 h-4 w-4" />
               Export Python
             </DropdownMenuItem>
-            <div className="my-1 h-px bg-neutral-200 dark:bg-neutral-700" />
-            <DropdownMenuItem
-              onClick={() => {
-                const rf = flowJsonToReactFlow(EXAMPLES[0].json as FlowJson);
-                setNodes(rf.nodes as FlowNode[]);
-                setEdges(rf.edges as FlowEdge[]);
-                setTimeout(() => {
-                  rfInstance?.fitView?.({ padding: 0.2, duration: 300 });
-                }, 100);
-              }}
-            >
+            <DropdownMenuItem onClick={onSaveTemplate}>
               <FileText className="mr-2 h-4 w-4" />
-              {EXAMPLES[0].name}
+              <span>Save Template</span>
             </DropdownMenuItem>
-            {EXAMPLES.slice(1).map((ex) => (
-              <DropdownMenuItem
-                key={ex.id}
-                onClick={() => {
-                  const rf = flowJsonToReactFlow(ex.json as FlowJson);
-                  setNodes(rf.nodes as FlowNode[]);
-                  setEdges(rf.edges as FlowEdge[]);
-                  setTimeout(() => {
-                    rfInstance?.fitView?.({ padding: 0.2, duration: 300 });
-                  }, 100);
-                }}
-              >
-                <FileText className="mr-2 h-4 w-4" />
-                {ex.name}
-              </DropdownMenuItem>
-            ))}
             <DropdownMenuSeparator />
-            {moreLinks}
           </DropdownMenuContent>
         </DropdownMenu>
-        {/* Load Examples dropdown - shown on larger screens only */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="secondary" size="sm" className="hidden md:flex gap-1.5">
-              <FileText className="h-4 w-4" />
-              <span className="hidden md:inline">Load Example</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {EXAMPLES.map((ex) => (
-              <DropdownMenuItem
-                key={ex.id}
-                onClick={() => {
-                  const rf = flowJsonToReactFlow(ex.json as FlowJson);
-                  setNodes(rf.nodes as FlowNode[]);
-                  setEdges(rf.edges as FlowEdge[]);
-                  setTimeout(() => {
-                    rfInstance?.fitView?.({ padding: 0.2, duration: 300 });
-                  }, 100);
-                }}
-              >
-                {ex.name}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <div className="w-px bg-neutral-300 dark:bg-neutral-700" />
-        <ThemeSwitch />
-        <div className="hidden md:block w-px bg-neutral-300 dark:bg-neutral-700" />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="secondary" size="sm" className="hidden md:flex gap-1.5">
-              <IconDots className="h-4 w-4" />
-              <span className="hidden lg:inline">More</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">{moreLinks}</DropdownMenuContent>
-        </DropdownMenu>
+        <Button
+          variant="default"
+          size="sm"
+          className="cursor-pointer hidden md:flex gap-1.5"
+          onClick={onSaveTemplate}
+        >
+          <FileText className="h-4 w-4" />
+          <span className="hidden md:inline">Save Template</span>
+        </Button>
       </div>
     </TooltipProvider>
   );
