@@ -23,7 +23,7 @@ import {
   looksLikeMarkdown,
 } from "@/lib/utils/markdown-utils";
 import { buildMentionExtension } from "@/lib/utils/tiptap-mention";
-import { sampleVariables, sampleDefaultVariables, sampleFunctions } from "@/lib/data/mentionData";
+import { useMentionData } from "@/hooks/useMentionData";
 
 interface MessageItemProps {
   message: MessageJson;
@@ -37,17 +37,20 @@ export function MessageItem({ message, index, onUpdate, onRemove }: MessageItemP
   const messageContentId = useId();
   const editorRef = useRef<Editor | null>(null);
 
+  // Fetch mention data from API
+  const { variables, globalVariables, functions, isLoading } = useMentionData();
+  console.log("variables", variables);
   // Normalize variables for mentions
   const normalizedVariables = useMemo(
     () =>
-      sampleVariables.map((v) => ({
+      variables.map((v) => ({
         id: v.id,
         label: v.name ?? v.id,
         name: v.name ?? v.id,
         description: v.description ?? "",
         isMutable: v.isMutable,
       })),
-    []
+    [variables]
   );
 
   const mutableVariables = useMemo(
@@ -55,108 +58,138 @@ export function MessageItem({ message, index, onUpdate, onRemove }: MessageItemP
     [normalizedVariables]
   );
 
-  const mentionExtensions = buildMentionExtension(
-    () => normalizedVariables,
-    () => mutableVariables,
-    () => sampleFunctions,
-    () => sampleDefaultVariables
-  );
+  // Use refs to ensure getters always get current values
+  const normalizedVariablesRef = useRef(normalizedVariables);
+  const mutableVariablesRef = useRef(mutableVariables);
+  const functionsRef = useRef(functions);
+  const globalVariablesRef = useRef(globalVariables);
 
-  const editor = useEditor({
-    immediatelyRender: false,
-    onCreate: ({ editor }) => {
-      editorRef.current = editor;
-    },
-    editable: true,
-    extensions: [
-      StarterKit.configure({
-        heading: {
-          levels: [1, 2, 3],
-          HTMLAttributes: { class: "font-bold text-gray-900 dark:text-gray-100" },
-        },
-        bulletList: {
-          keepMarks: true,
-          keepAttributes: true,
-          HTMLAttributes: { class: "list-disc" },
-        },
-        orderedList: {
-          keepMarks: true,
-          keepAttributes: true,
-          HTMLAttributes: { class: "list-decimal" },
-        },
-        listItem: {
-          HTMLAttributes: { class: "ml-6 relative" },
-        },
-        code: {
-          HTMLAttributes: {
-            class: "bg-gray-200 dark:bg-gray-700 px-1 py-0.5 rounded text-sm font-mono",
-          },
-        },
-        codeBlock: {
-          HTMLAttributes: {
-            class: "bg-gray-200 dark:bg-gray-700 p-3 rounded font-mono text-sm my-4",
-          },
-        },
-        bold: { HTMLAttributes: { class: "font-bold" } },
-        italic: { HTMLAttributes: { class: "italic" } },
-      }),
-      ...mentionExtensions,
-      TextStyle,
-    ],
-    content: parseContentWithMentions(
-      message.content ?? "",
-      normalizedVariables,
-      sampleFunctions,
-      sampleDefaultVariables
-    ),
-    editorProps: {
-      handlePaste: (_view, event) => {
-        const text = event.clipboardData?.getData("text/plain") ?? "";
-        if (text && looksLikeMarkdown(text)) {
-          event.preventDefault();
-          const htmlFromMarkdown = parseContentWithMentions(
-            text,
-            normalizedVariables,
-            sampleFunctions,
-            sampleDefaultVariables
-          );
-          editorRef.current?.chain().focus().insertContent(htmlFromMarkdown).run();
-          return true;
-        }
-        return false;
+  // Update refs when values change
+  useEffect(() => {
+    normalizedVariablesRef.current = normalizedVariables;
+    mutableVariablesRef.current = mutableVariables;
+    functionsRef.current = functions;
+    globalVariablesRef.current = globalVariables;
+  }, [normalizedVariables, mutableVariables, functions, globalVariables]);
+
+  const mentionExtensions = useMemo(() => {
+    console.log("Building mention extensions with variables:", normalizedVariables.length);
+    return buildMentionExtension(
+      () => {
+        const vars = normalizedVariablesRef.current;
+        console.log("getVariables called, returning:", vars.length, "variables");
+        return vars;
       },
-      attributes: {
-        class:
-          "ProseMirror prose prose-sm focus:outline-none min-h-20 text-xs " +
-          // Nested list styling
-          "[&_ul]:list-disc [&_ol]:list-decimal " +
-          "[&_ul_ul]:list-[circle] [&_ul_ul_ul]:list-[square] " +
-          "[&_ol_ol]:list-[lower-alpha] [&_ol_ol_ol]:list-[lower-roman] " +
-          "[&_li]:ml-0 [&_ul]:pl-6 [&_ol]:pl-6 " +
-          "[&_li_p]:mb-0 [&_li]:mb-1",
+      () => mutableVariablesRef.current,
+      () => functionsRef.current,
+      () => globalVariablesRef.current
+    );
+  }, [
+    normalizedVariables.length,
+    mutableVariables.length,
+    functions.length,
+    globalVariables.length,
+  ]);
+
+  const editor = useEditor(
+    {
+      immediatelyRender: false,
+      onCreate: ({ editor }) => {
+        editorRef.current = editor;
+      },
+      editable: true,
+      extensions: [
+        StarterKit.configure({
+          heading: {
+            levels: [1, 2, 3],
+            HTMLAttributes: { class: "font-bold text-gray-900 dark:text-gray-100" },
+          },
+          bulletList: {
+            keepMarks: true,
+            keepAttributes: true,
+            HTMLAttributes: { class: "list-disc" },
+          },
+          orderedList: {
+            keepMarks: true,
+            keepAttributes: true,
+            HTMLAttributes: { class: "list-decimal" },
+          },
+          listItem: {
+            HTMLAttributes: { class: "ml-6 relative" },
+          },
+          code: {
+            HTMLAttributes: {
+              class: "bg-gray-200 dark:bg-gray-700 px-1 py-0.5 rounded text-sm font-mono",
+            },
+          },
+          codeBlock: {
+            HTMLAttributes: {
+              class: "bg-gray-200 dark:bg-gray-700 p-3 rounded font-mono text-sm my-4",
+            },
+          },
+          bold: { HTMLAttributes: { class: "font-bold" } },
+          italic: { HTMLAttributes: { class: "italic" } },
+        }),
+        ...mentionExtensions,
+        TextStyle,
+      ],
+      content: parseContentWithMentions(
+        message.content ?? "",
+        normalizedVariables,
+        functions,
+        globalVariables
+      ),
+      editorProps: {
+        handlePaste: (_view, event) => {
+          const text = event.clipboardData?.getData("text/plain") ?? "";
+          if (text && looksLikeMarkdown(text)) {
+            event.preventDefault();
+            const htmlFromMarkdown = parseContentWithMentions(
+              text,
+              normalizedVariables,
+              functions,
+              globalVariables
+            );
+            editorRef.current?.chain().focus().insertContent(htmlFromMarkdown).run();
+            return true;
+          }
+          return false;
+        },
+        attributes: {
+          class:
+            "ProseMirror prose prose-sm focus:outline-none min-h-20 text-xs " +
+            // Nested list styling
+            "[&_ul]:list-disc [&_ol]:list-decimal " +
+            "[&_ul_ul]:list-[circle] [&_ul_ul_ul]:list-[square] " +
+            "[&_ol_ol]:list-[lower-alpha] [&_ol_ol_ol]:list-[lower-roman] " +
+            "[&_li]:ml-0 [&_ul]:pl-6 [&_ol]:pl-6 " +
+            "[&_li_p]:mb-0 [&_li]:mb-1",
+        },
+      },
+      onUpdate: ({ editor }) => {
+        const rawHTML = editor.getHTML();
+        const markdownContent = convertToMarkdown(rawHTML);
+        onUpdate({ content: markdownContent });
       },
     },
-    onUpdate: ({ editor }) => {
-      const rawHTML = editor.getHTML();
-      const markdownContent = convertToMarkdown(rawHTML);
-      onUpdate({ content: markdownContent });
-    },
-  });
+    // Force recreation when extensions change (when variables load)
+    [mentionExtensions]
+  );
 
   // Update editor content when message.content changes externally
   useEffect(() => {
-    if (!editor) return;
+    if (!editor || isLoading) return;
     const currentContent = editor.getHTML();
     const expectedContent = parseContentWithMentions(
       message.content ?? "",
       normalizedVariables,
-      sampleFunctions,
-      sampleDefaultVariables
+      functions,
+      globalVariables
     );
     if (currentContent !== expectedContent) {
       editor.commands.setContent(expectedContent);
     }
-  }, [message.content, editor, normalizedVariables]);
+  }, [message.content, editor, normalizedVariables, functions, globalVariables, isLoading]);
 
   if (!editor) return null;
 

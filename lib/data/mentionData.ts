@@ -95,20 +95,5 @@ export const sampleFunctions: FunctionItem[] = [
     id: "disconnect_call",
     name: "disconnect_call",
     description: "Speaks a disconnection notice and disconnects",
-  },
-  {
-    id: "send_message",
-    name: "send_message",
-    description: "Sends a message to the user",
-  },
-  {
-    id: "get_weather",
-    name: "get_weather",
-    description: "Retrieves weather information for a location",
-  },
-  {
-    id: "schedule_meeting",
-    name: "schedule_meeting",
-    description: "Schedules a meeting in the calendar",
-  },
+  }
 ];

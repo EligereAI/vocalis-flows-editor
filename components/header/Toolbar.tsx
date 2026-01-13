@@ -82,6 +82,11 @@ export default function Toolbar({
       return;
     }
 
+    if (!agentIdFromUrl) {
+      showToast("Agent ID is required. Please navigate to a valid agent page.", "error");
+      return;
+    }
+
     const json = reactFlowToFlowJson(nodes, edges);
     const validationResult = validateFlowJson(json);
     if (!validationResult.valid) {
@@ -95,24 +100,42 @@ export default function Toolbar({
       return;
     }
 
+    const url = `${FLOWS_PROMPT_URL}/api/v1/agent/save-flows-prompt`;
+    const payload = {
+      agent_id: agentIdFromUrl,
+      version_number: versionNumberFromUrl,
+      flows_prompt: {
+        [json.meta?.name ?? "flow1"]: json,
+      },
+    };
+
     try {
-      const response = await fetch(FLOWS_PROMPT_URL + "/editor/api/v1/agent/editor/save-flows-prompt", {
+      const response = await fetch(url, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          agentId: agentIdFromUrl,
-          versionNumber: versionNumberFromUrl,
-          flowsPrompt: {
-            [json.meta?.name ?? "flow1"]: json,
-          },
-        }),
+        body: JSON.stringify(payload),
       });
 
+      const responseText = await response.text();
+
       if (!response.ok) {
-        showToast("Failed to save template", "error");
-        console.error("Failed to save template:", await response.text());
+        console.error("Failed to save template:", {
+          status: response.status,
+          statusText: response.statusText,
+          body: responseText,
+        });
+
+        let errorMessage = "Failed to save template";
+        try {
+          const errorJson = JSON.parse(responseText);
+          errorMessage = errorJson.detail || errorMessage;
+        } catch {
+          errorMessage = responseText || errorMessage;
+        }
+
+        showToast(errorMessage, "error");
         return;
       }
 
