@@ -13,6 +13,7 @@ import {
   useNodesState,
 } from "@xyflow/react";
 import { useTheme } from "next-themes";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import SelfLoopEdge from "@/components/edges/SelfLoopEdge";
@@ -23,15 +24,17 @@ import BaseNode from "@/components/nodes/BaseNode";
 import DecisionNode from "@/components/nodes/DecisionNode";
 import NodeContextMenu from "@/components/nodes/NodeContextMenu";
 import NodePalette from "@/components/palette/NodePalette";
-import ToastContainer from "@/components/ui/Toast";
+import ToastContainer, { showToast } from "@/components/ui/Toast";
 import { extractDecisionNodeFromChange, useDecisionNodes } from "@/hooks/useDecisionNodes";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { flowJsonToReactFlow } from "@/lib/convert/flowAdapters";
 import { getTemplateByType } from "@/lib/nodes/templates";
-import type { FlowFunctionJson } from "@/lib/schema/flow.schema";
+import type { FlowFunctionJson, FlowJson } from "@/lib/schema/flow.schema";
 import { loadCurrent, saveCurrent } from "@/lib/storage/localStore";
 import { useEditorStore } from "@/lib/store/editorStore";
 import type { FlowEdge, FlowNode, FlowNodeData, ReactFlowInstance } from "@/lib/types/flowTypes";
 import { UndoManager } from "@/lib/undo/undoManager";
+import { validateFlowJson } from "@/lib/validation/validator";
 import {
   handleDecisionNodeConnection,
   handleRegularConnection,
@@ -83,10 +86,14 @@ function useInitialGraph() {
   }, []);
 }
 
+const BACKEND_URL: string | undefined = process.env.NEXT_PUBLIC_BACKEND_URL;
+
 export default function EditorShell() {
   const initial = useInitialGraph();
   const [nodes, setNodes, onNodesChangeBase] = useNodesState(initial.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initial.edges);
+  const pathname = usePathname();
+  const hasLoadedFromApi = useRef(false);
 
   // Context menu state
   const [contextMenuOpen, setContextMenuOpen] = useState(false);
@@ -209,15 +216,175 @@ export default function EditorShell() {
     [setNodes, validateFunctionIndexAfterUpdate]
   );
 
-  // load current on mount if present
+  // Helper: Extract FlowJson from various API response shapes
+  const extractFlowFromResponse = useCallback((data: unknown): FlowJson | null => {
+    if (!data || typeof data !== "object") {
+      return null;
+    }
+    const obj = data as Record<string, unknown>;
+
+    // 1) Expected shape from save endpoint: { flows_prompt: { [name]: FlowJson } }
+    if (obj.flows_prompt && typeof obj.flows_prompt === "object") {
+      const flowsObj = obj.flows_prompt as Record<string, unknown>;
+      const flowNames = Object.keys(flowsObj);
+      if (flowNames.length > 0) {
+        const firstFlowName = flowNames[0];
+        const flowData = flowsObj[firstFlowName];
+        if (flowData && typeof flowData === "object") {
+          return flowData as FlowJson;
+        }
+      }
+    }
+
+    // 2) Shape: { flow: FlowJson }
+    if (obj.flow && typeof obj.flow === "object") {
+      return obj.flow as FlowJson;
+    }
+
+    // 3) Shape: plain FlowJson at root (has nodes and edges arrays)
+    if (Array.isArray((obj as FlowJson).nodes) && Array.isArray((obj as FlowJson).edges)) {
+      return obj as FlowJson;
+    }
+
+    // 4) Fallback: search one level deep for any value that looks like FlowJson
+    for (const value of Object.values(obj)) {
+      if (value && typeof value === "object") {
+        const candidate = value as FlowJson;
+        if (Array.isArray(candidate.nodes) && Array.isArray(candidate.edges)) {
+          return candidate;
+        }
+      }
+    }
+
+    return null;
+  }, []);
+
+  // Fetch flows prompt from API when on editor route
   useEffect(() => {
-    const saved = loadCurrent<{ nodes: FlowNode[]; edges: FlowEdge[] }>();
-    if (saved?.nodes && saved?.edges) {
-      setNodes(saved.nodes);
-      setEdges(saved.edges);
+    // Extract agentId and versionNumber from URL
+    const pathSegments = pathname.split("/").filter((segment) => segment.length > 0);
+    let agentIdFromUrl = "";
+    let versionNumberFromUrl = "1";
+
+    if (pathSegments.length >= 2) {
+      agentIdFromUrl = pathSegments[0] ?? "";
+      versionNumberFromUrl = pathSegments[1] ?? "1";
+    } else if (pathSegments.length === 1) {
+      agentIdFromUrl = pathSegments[0] ?? "";
+    }
+
+    if (!BACKEND_URL || !agentIdFromUrl) {
+      return;
+    }
+
+    // Reset flag for new route to allow API loading
+    hasLoadedFromApi.current = false;
+
+    const fetchFlowsPrompt = async () => {
+      try {
+        const url = `${BACKEND_URL}/api/v1/agent/get-flows-prompt?agent_id=${encodeURIComponent(agentIdFromUrl)}&version_number=${encodeURIComponent(versionNumberFromUrl)}`;
+        const response = await fetch(url, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          if (response.status === 404) {
+            // No flows prompt found, allow localStorage fallback
+            return;
+          }
+          const responseText = await response.text();
+          console.error("Failed to fetch flows prompt:", {
+            status: response.status,
+            statusText: response.statusText,
+            body: responseText,
+          });
+          return;
+        }
+
+        const data = await response.json();
+        console.log("Fetched flows prompt response:", data);
+
+        const flowJson = extractFlowFromResponse(data);
+
+        if (!flowJson) {
+          console.error("Could not determine flow JSON from response:", data);
+          showToast("Invalid response format from server", "error");
+          return;
+        }
+
+        const validationResult = validateFlowJson(flowJson);
+        if (!validationResult.valid) {
+          console.error("Invalid flow JSON:", validationResult.errors);
+          showToast("Invalid flow data received from server", "error");
+          hasLoadedFromApi.current = false;
+          return;
+        }
+
+        hasLoadedFromApi.current = true;
+
+        const { nodes: flowNodes, edges: flowEdges } = flowJsonToReactFlow(flowJson);
+        console.log("Converted flow nodes:", flowNodes.length, "edges:", flowEdges.length);
+
+        setNodes(flowNodes as FlowNode[]);
+        setEdges(flowEdges);
+        showToast("Flow loaded successfully", "success");
+
+        // Reset undo manager with loaded state
+        undoManagerRef.current = new UndoManager({
+          nodes: flowNodes as FlowNode[],
+          edges: flowEdges,
+        });
+
+        // Fit view after a short delay to ensure nodes are rendered
+        setTimeout(() => {
+          const currentRfInstance = useEditorStore.getState().rfInstance;
+          if (currentRfInstance) {
+            currentRfInstance.fitView({ padding: 0.2, duration: 300 });
+          }
+        }, 100);
+      } catch (error) {
+        console.error("Error fetching flows prompt:", error);
+      }
+    };
+
+    fetchFlowsPrompt();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname, extractFlowFromResponse]);
+
+  // load current on mount if present (only if not loaded from API)
+  useEffect(() => {
+    // Extract agentId from URL to check if we're on an editor route
+    const pathSegments = pathname.split("/").filter((segment) => segment.length > 0);
+    const hasAgentId = pathSegments.length >= 1 && pathSegments[0] && BACKEND_URL;
+
+    // If we're on an editor route, wait a bit for API to load first
+    if (hasAgentId) {
+      const timer = setTimeout(() => {
+        if (!hasLoadedFromApi.current) {
+          // API didn't load, fall back to localStorage
+          const saved = loadCurrent<{ nodes: FlowNode[]; edges: FlowEdge[] }>();
+          if (saved?.nodes && saved?.edges) {
+            setNodes(saved.nodes);
+            setEdges(saved.edges);
+          }
+        }
+      }, 500); // Wait 500ms for API to complete
+      return () => clearTimeout(timer);
+    } else {
+      // Not on editor route, load from localStorage immediately
+      if (!hasLoadedFromApi.current) {
+        const saved = loadCurrent<{ nodes: FlowNode[]; edges: FlowEdge[] }>();
+        if (saved?.nodes && saved?.edges) {
+          setNodes(saved.nodes);
+          setEdges(saved.edges);
+        }
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, []); // Only run on mount
 
   // Manage decision nodes lifecycle
   useDecisionNodes(nodes, setNodes);

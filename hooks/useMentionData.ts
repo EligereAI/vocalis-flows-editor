@@ -32,20 +32,15 @@ export function useMentionData() {
 
   useEffect(() => {
     const fetchMentionData = async () => {
-      // Extract agentId and versionNumber from URL
       const pathSegments = pathname.split("/").filter((segment) => segment.length > 0);
-      const editorIndex = pathSegments.indexOf("editor");
 
-      // if (editorIndex === -1 || pathSegments.length <= editorIndex + 2) {
-      //   // No agentId/versionNumber in URL, use sample data
-      //   setIsLoading(false);
-      //   return;
-      // }
+      if (pathSegments.length < 1) {
+        setIsLoading(false);
+        return;
+      }
+      const agentId = pathSegments[0] ?? "";
+      const versionNumber = pathSegments[1] ?? "1";
 
-      const agentId = pathSegments[editorIndex + 1] ?? "";
-      const versionNumber = pathSegments[editorIndex + 2] ?? "1";
-
-      // Check if backend URL is configured
       if (!BACKEND_URL) {
         console.warn("NEXT_PUBLIC_BACKEND_URL is not set, using sample data");
         setIsLoading(false);
@@ -57,8 +52,8 @@ export function useMentionData() {
         setError(null);
 
         const url = new URL(`${BACKEND_URL}/api/v1/agent/get-agent-variables`);
-        url.searchParams.set("agent_id", "3c8bed54-1177-4520-8d60-c21005458488");
-        url.searchParams.set("version_number", "2");
+        url.searchParams.set("agent_id", agentId);
+        url.searchParams.set("version_number", versionNumber);
 
         const response = await fetch(url.toString(), {
           method: "GET",
@@ -73,24 +68,18 @@ export function useMentionData() {
 
         const data: MentionDataResponse | VariableItem[] = await response.json();
 
-        // Handle multiple response formats
         let variablesArray: VariableItem[] = [];
-
         if (Array.isArray(data)) {
-          // Direct array response
           variablesArray = data;
         } else if (data && typeof data === "object") {
-          // Check for { status: "success", data: [...] } format
           if ("data" in data && Array.isArray(data.data)) {
             variablesArray = data.data;
           }
-          // Check for { variables: [...] } format (legacy)
           else if ("variables" in data && Array.isArray(data.variables)) {
             variablesArray = data.variables;
           }
         }
 
-        // Update variables if we got valid data
         if (variablesArray && variablesArray.length > 0) {
           const mappedVariables = variablesArray.map((v) => ({
             id: v.id,

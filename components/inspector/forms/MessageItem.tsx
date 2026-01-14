@@ -37,10 +37,8 @@ export function MessageItem({ message, index, onUpdate, onRemove }: MessageItemP
   const messageContentId = useId();
   const editorRef = useRef<Editor | null>(null);
 
-  // Fetch mention data from API
   const { variables, globalVariables, functions, isLoading } = useMentionData();
-  console.log("variables", variables);
-  // Normalize variables for mentions
+
   const normalizedVariables = useMemo(
     () =>
       variables.map((v) => ({
@@ -73,11 +71,9 @@ export function MessageItem({ message, index, onUpdate, onRemove }: MessageItemP
   }, [normalizedVariables, mutableVariables, functions, globalVariables]);
 
   const mentionExtensions = useMemo(() => {
-    console.log("Building mention extensions with variables:", normalizedVariables.length);
     return buildMentionExtension(
       () => {
         const vars = normalizedVariablesRef.current;
-        console.log("getVariables called, returning:", vars.length, "variables");
         return vars;
       },
       () => mutableVariablesRef.current,

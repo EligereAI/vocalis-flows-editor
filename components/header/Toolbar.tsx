@@ -69,10 +69,11 @@ export default function Toolbar({
   let agentIdFromUrl: string = "";
   let versionNumberFromUrl: string = "1";
 
-  const editorIndex: number = pathSegments.indexOf("editor");
-  if (editorIndex !== -1 && pathSegments.length > editorIndex + 2) {
-    agentIdFromUrl = pathSegments[editorIndex + 1] ?? "";
-    versionNumberFromUrl = pathSegments[editorIndex + 2] ?? "1";
+  if (pathSegments.length >= 2) {
+    agentIdFromUrl = pathSegments[0] ?? "";
+    versionNumberFromUrl = pathSegments[1] ?? "1";
+  } else if (pathSegments.length === 1) {
+    agentIdFromUrl = pathSegments[0] ?? "";
   }
 
   async function onSaveTemplate(): Promise<void> {
@@ -400,11 +401,14 @@ export default function Toolbar({
               <Download className="mr-2 h-4 w-4" />
               Export Python
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={onSaveTemplate}>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={onSaveTemplate}
+              className="cursor-pointer bg-blue-500 text-white"
+            >
               <FileText className="mr-2 h-4 w-4" />
               <span>Save Template</span>
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
           </DropdownMenuContent>
         </DropdownMenu>
         <Button
