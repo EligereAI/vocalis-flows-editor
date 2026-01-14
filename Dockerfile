@@ -1,29 +1,31 @@
-# Use an official Node.js runtime as a parent image
-FROM node:22-alpine
+# syntax=docker/dockerfile:1
 
-# Set the working directory
+FROM node:22-alpine AS builder
 WORKDIR /app
+
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY . .
 
 ARG NEXT_PUBLIC_BACKEND_URL
 ENV NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL
 
-# Copy package files
-COPY package.json ./
-
-# Install dependencies using npm
-RUN npm install
-
-# Copy the rest of your application code
-COPY . .
-
-# Build the Next.js app
 RUN npm run build
 
-# Expose the port your app runs on
-EXPOSE 8080
 
-# Set the port environment variable
+FROM node:22-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
 ENV PORT=8080
 
-# Start the Next.js application
-CMD ["npm", "run", "start"]
+RUN addgroup -S nextjs && adduser -S nextjs -G nextjs
+USER nextjs
+
+COPY --from=builder --chown=nextjs:nextjs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nextjs /app/.next/standalone ./
+
+EXPOSE 8080
+CMD ["node", "server.js"]

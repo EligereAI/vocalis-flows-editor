@@ -1,0 +1,44 @@
+# dependencies
+node_modules
+
+# next build output
+.next
+out
+
+# tests
+coverage
+.nyc_output
+__tests__
+tests
+**/*.test.*
+**/*.spec.*
+
+# local env
+.env
+.env.*
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# editor
+.vscode
+.idea
+
+# vcs
+.git
+.gitignore
+.gitattributes
+
+# mac
+.DS_Store
+
+# misc
+*.swp
+*.swo
+*~
+
+# docs (not needed in image)
+docs
+*.md
