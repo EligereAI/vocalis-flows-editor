@@ -253,7 +253,7 @@ export default function InspectorPanel({
             <div className="flex items-center space-x-2 pt-2 border-t border-neutral-200 dark:border-neutral-700">
               <Checkbox
                 id="respond_immediately"
-                checked={data?.respond_immediately !== false}
+                checked={data?.respond_immediately === true}
                 onCheckedChange={(checked) => update({ respond_immediately: checked === true })}
                 aria-label="Respond immediately"
               />
