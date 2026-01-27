@@ -6,6 +6,7 @@ import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import type { FlowFunctionJson } from "@/lib/schema/flow.schema";
 import { useEditorStore } from "@/lib/store/editorStore";
+import type { SuggestedProperty } from "@/lib/utils/flowProperties";
 
 import { FunctionItem } from "./FunctionItem";
 
@@ -14,6 +15,7 @@ type Props = {
   onChange: (functions: FlowFunctionJson[]) => void;
   availableNodeIds: string[];
   currentNodeId?: string;
+  suggestedProperties: SuggestedProperty[];
 };
 
 export default function FunctionsForm({
@@ -21,6 +23,7 @@ export default function FunctionsForm({
   onChange,
   availableNodeIds,
   currentNodeId,
+  suggestedProperties,
 }: Props) {
   const items = functions ?? [];
   const functionRefs = useRef<Map<number, HTMLDivElement>>(new Map());
@@ -123,6 +126,7 @@ export default function FunctionsForm({
               ? selectedConditionIndex
               : null
           }
+          suggestedProperties={suggestedProperties}
         />
       ))}
       {items.length === 0 && (

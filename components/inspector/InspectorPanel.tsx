@@ -2,7 +2,7 @@
 
 import { Node } from "@xyflow/react";
 import { ChevronDown, ChevronUp, Trash2, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -15,6 +15,8 @@ import { useEditorStore } from "@/lib/store/editorStore";
 import { FlowNodeData } from "@/lib/types/flowTypes";
 import { generateNodeIdFromLabel } from "@/lib/utils/nodeId";
 import { deriveNodeType } from "@/lib/utils/nodeType";
+
+import { getAllPropertiesFromNodes } from "@/lib/utils/flowProperties";
 
 import ActionsForm from "./forms/ActionsForm";
 import ContextStrategyForm from "./forms/ContextStrategyForm";
@@ -49,6 +51,11 @@ export default function InspectorPanel({
   const data = selected?.data as FlowNodeData;
   // Derive the displayed type from the node data (especially post_actions)
   const displayedType = deriveNodeType(data, selected?.type);
+
+  const suggestedProperties = useMemo(
+    () => getAllPropertiesFromNodes(nodes),
+    [nodes]
+  );
 
   const labelInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -302,6 +309,7 @@ export default function InspectorPanel({
               onChange={(funcs) => update({ functions: funcs })}
               availableNodeIds={availableNodeIds}
               currentNodeId={id}
+              suggestedProperties={suggestedProperties}
             />
           </div>
         </TabsContent>

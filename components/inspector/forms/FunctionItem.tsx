@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { FlowFunctionJson } from "@/lib/schema/flow.schema";
 import { useEditorStore } from "@/lib/store/editorStore";
+import type { SuggestedProperty } from "@/lib/utils/flowProperties";
 import { formatFunctionName, validateFunctionName } from "@/lib/utils/nameFormatting";
 
 import { DecisionSection } from "./DecisionSection";
@@ -30,6 +31,7 @@ interface FunctionItemProps {
   functionIndex: number;
   isSelected: boolean;
   selectedConditionIndex: number | null; // -1 for default, 0+ for condition index
+  suggestedProperties: SuggestedProperty[];
 }
 
 export const FunctionItem = React.forwardRef<HTMLDivElement, FunctionItemProps>(
@@ -43,6 +45,7 @@ export const FunctionItem = React.forwardRef<HTMLDivElement, FunctionItemProps>(
       isSelected,
       selectedConditionIndex,
       currentNodeId,
+      suggestedProperties,
     },
     ref
   ) => {
@@ -162,6 +165,34 @@ export const FunctionItem = React.forwardRef<HTMLDivElement, FunctionItemProps>(
         required: newRequired.length > 0 ? newRequired : undefined,
       });
     };
+
+    const applySuggestedProperty = useCallback(
+      (currentPropName: string, s: SuggestedProperty) => {
+        const { name: newName, property: newProp } = s;
+        if (newName !== currentPropName && properties[newName]) return;
+
+        const wasRequired = required.includes(currentPropName);
+        const newProperties: Record<string, FunctionProperty> = {};
+
+        for (const [key, value] of Object.entries(properties)) {
+          if (key === currentPropName) {
+            newProperties[newName] = { ...newProp } as FunctionProperty;
+          } else {
+            newProperties[key] = value as FunctionProperty;
+          }
+        }
+
+        const propertyKeys = Object.keys(newProperties);
+        const newRequired = wasRequired
+          ? [...required.filter((r) => r !== currentPropName && propertyKeys.includes(r)), newName]
+          : required.filter((r) => r !== currentPropName && propertyKeys.includes(r));
+        onChange({
+          properties: propertyKeys.length > 0 ? newProperties : undefined,
+          required: newRequired.length > 0 ? newRequired : undefined,
+        });
+      },
+      [properties, required, onChange]
+    );
 
     const handleNameChange = (newName: string) => {
       // Allow raw input while typing (including spaces) - only format on blur
@@ -306,9 +337,11 @@ export const FunctionItem = React.forwardRef<HTMLDivElement, FunctionItemProps>(
                       isRequired={required.includes(propName)}
                       onUpdate={(updates) => updateProperty(propName, updates)}
                       onRename={(newName) => renameProperty(propName, newName)}
+                      onApplySuggestion={(s) => applySuggestedProperty(propName, s)}
                       onRemove={() => removeProperty(propName)}
                       onRequiredChange={(isReq) => updateRequired(propName, isReq)}
                       onFocus={handleFocus}
+                      suggestedProperties={suggestedProperties}
                     />
                   ))}
                 </div>
