@@ -1,7 +1,7 @@
 "use client";
 
 import { HelpCircle, Trash2 } from "lucide-react";
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -55,6 +55,12 @@ export function PropertyItem({
   const [nameError, setNameError] = useState<string | null>(null);
   const [enumValues, setEnumValues] = useState(() => (property.enum || []).join("\n"));
   const [patternValue, setPatternValue] = useState(() => property.pattern ?? "");
+  
+  // Sync local name state when propName changes externally (e.g., after rename)
+  useEffect(() => {
+    setName(propName);
+  }, [propName]);
+  
   const propertyNameId = useId();
   const propertyTypeId = useId();
   const propertyValidationId = useId();

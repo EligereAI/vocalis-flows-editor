@@ -69,17 +69,26 @@ export const FunctionItem = React.forwardRef<HTMLDivElement, FunctionItemProps>(
 
     const updateProperties = useCallback(
       (newProperties: Record<string, FunctionProperty>) => {
+        const propertyKeys = Object.keys(newProperties);
+        // Clean up required array to only include properties that actually exist
+        const cleanedRequired = required.filter((r) => propertyKeys.includes(r));
         onChange({
-          properties: Object.keys(newProperties).length > 0 ? newProperties : undefined,
+          properties: propertyKeys.length > 0 ? newProperties : undefined,
+          required: cleanedRequired.length > 0 ? cleanedRequired : undefined,
         });
       },
-      [onChange]
+      [onChange, required]
     );
 
     const updateRequired = (propName: string, isRequired: boolean) => {
+      // Only allow adding to required if the property exists
+      if (isRequired && !properties[propName]) {
+        return;
+      }
+      // Remove duplicates and filter out the property name, then add it back if required
       const newRequired = isRequired
-        ? [...required.filter((r) => r !== propName), propName]
-        : required.filter((r) => r !== propName);
+        ? [...required.filter((r) => r !== propName && properties[r]), propName]
+        : required.filter((r) => r !== propName && properties[r]);
       onChange({ required: newRequired.length > 0 ? newRequired : undefined });
     };
 
@@ -141,15 +150,17 @@ export const FunctionItem = React.forwardRef<HTMLDivElement, FunctionItemProps>(
         }
       });
 
-      updateProperties(newProperties);
-
-      // Update required array
-      if (wasRequired) {
-        const newRequired = required.filter((r) => r !== oldName);
-        onChange({
-          required: [...newRequired, newName].length > 0 ? [...newRequired, newName] : undefined,
-        });
-      }
+      // Update properties and required array together
+      const propertyKeys = Object.keys(newProperties);
+      // Remove old name, add new name if it was required, and filter out any non-existent properties
+      const newRequired = wasRequired
+        ? [...required.filter((r) => r !== oldName && propertyKeys.includes(r)), newName]
+        : required.filter((r) => r !== oldName && propertyKeys.includes(r));
+      
+      onChange({
+        properties: propertyKeys.length > 0 ? newProperties : undefined,
+        required: newRequired.length > 0 ? newRequired : undefined,
+      });
     };
 
     const handleNameChange = (newName: string) => {
