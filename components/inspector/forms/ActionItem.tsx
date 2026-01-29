@@ -72,6 +72,20 @@ export function ActionItem({ action, index, onUpdate, onRemove }: ActionItemProp
           />
         </div>
       )}
+      {action.type === "end_conversation" && (
+        <div className="flex-1 space-y-2">
+          <label htmlFor={actionTextId} className="sr-only">
+            End conversation
+          </label>
+          <Input
+            id={actionTextId}
+            className="h-8 text-xs flex-1"
+            value={action.text ?? ""}
+            onChange={(e) => onUpdate({ text: e.target.value })}
+            placeholder="End conversation message"
+          />
+        </div>
+      )}
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
