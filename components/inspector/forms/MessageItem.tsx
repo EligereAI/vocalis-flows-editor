@@ -36,6 +36,7 @@ export function MessageItem({ message, index, onUpdate, onRemove }: MessageItemP
   const messageRoleId = useId();
   const messageContentId = useId();
   const editorRef = useRef<Editor | null>(null);
+  const lastInternalContentRef = useRef<string>(message.content ?? "");
 
   const { variables, globalVariables, functions, isLoading } = useMentionData();
 
@@ -165,6 +166,7 @@ export function MessageItem({ message, index, onUpdate, onRemove }: MessageItemP
       onUpdate: ({ editor }) => {
         const rawHTML = editor.getHTML();
         const markdownContent = convertToMarkdown(rawHTML);
+        lastInternalContentRef.current = markdownContent;
         onUpdate({ content: markdownContent });
       },
     },
@@ -175,15 +177,41 @@ export function MessageItem({ message, index, onUpdate, onRemove }: MessageItemP
   // Update editor content when message.content changes externally
   useEffect(() => {
     if (!editor || isLoading) return;
+    
+    // Skip update if this change came from our own internal update
+    const incomingContent = message.content ?? "";
+    if (incomingContent === lastInternalContentRef.current) {
+      return;
+    }
+    
+    // Skip update if editor is focused (user is actively typing)
+    if (editor.isFocused) {
+      return;
+    }
+    
     const currentContent = editor.getHTML();
     const expectedContent = parseContentWithMentions(
-      message.content ?? "",
+      incomingContent,
       normalizedVariables,
       functions,
       globalVariables
     );
+    
+    // Only update if content actually differs
     if (currentContent !== expectedContent) {
+      // Preserve cursor position when updating
+      const { from, to } = editor.state.selection;
       editor.commands.setContent(expectedContent);
+      // Try to restore cursor position if still valid
+      try {
+        const docSize = editor.state.doc.content.size;
+        const safeFrom = Math.min(from, docSize);
+        const safeTo = Math.min(to, docSize);
+        editor.commands.setTextSelection({ from: safeFrom, to: safeTo });
+      } catch {
+        // If selection restoration fails, just focus at the end
+        editor.commands.focus("end");
+      }
     }
   }, [message.content, editor, normalizedVariables, functions, globalVariables, isLoading]);
 
